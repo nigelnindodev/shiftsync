@@ -70,9 +70,20 @@ export class StaffAvailabilityRepository {
     wallStartTime?: string,
     wallEndTime?: string,
   ): Promise<Result<StaffAvailabilityException, Error>> {
+    if ((wallStartTime && !wallEndTime) || (!wallStartTime && wallEndTime)) {
+      return Result.err(
+        new Error(
+          'wallStartTime and wallEndTime must both be provided, or both be omitted',
+        ),
+      );
+    }
+
+    const timeBounds =
+      wallStartTime && wallEndTime ? { wallStartTime, wallEndTime } : {};
+
     try {
       const existing = await this.exceptionRepo.findOne({
-        where: { staffMemberId, date, isAvailable, wallStartTime, wallEndTime },
+        where: { staffMemberId, date, isAvailable, ...timeBounds },
       });
       if (existing) return Result.ok(existing);
 
@@ -80,8 +91,7 @@ export class StaffAvailabilityRepository {
         staffMemberId,
         date,
         isAvailable,
-        wallStartTime,
-        wallEndTime,
+        ...timeBounds,
       });
       const saved = await this.exceptionRepo.save(exception);
       return Result.ok(saved);

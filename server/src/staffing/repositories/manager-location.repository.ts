@@ -13,6 +13,24 @@ export class ManagerLocationRepository {
     private readonly repo: Repository<ManagerLocation>,
   ) {}
 
+  async unassignLocation(
+    managerId: number,
+    locationId: number,
+  ): Promise<Result<void, Error>> {
+    try {
+      await this.repo.delete({ managerId, locationId });
+      return Result.ok(undefined);
+    } catch (e) {
+      this.logger.error(
+        `Failed to unassign location ${locationId} from manager ${managerId}`,
+        e,
+      );
+      return Result.err(
+        e instanceof Error ? e : new Error('Failed to unassign location'),
+      );
+    }
+  }
+
   async assignLocation(
     managerId: number,
     locationId: number,
@@ -25,7 +43,9 @@ export class ManagerLocationRepository {
       const existing = await this.repo.findOne({
         where: { managerId, locationId },
       });
-      return Result.ok(existing!);
+      return existing
+        ? Result.ok(existing)
+        : Result.err(new Error('Location assignment not found after upsert'));
     } catch (e) {
       this.logger.error(
         `Failed to assign location ${locationId} to manager ${managerId}`,

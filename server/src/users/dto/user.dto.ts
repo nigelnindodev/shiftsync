@@ -6,11 +6,44 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
   Min,
+  registerDecorator,
+  ValidationOptions,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
   ValidateNested,
 } from 'class-validator';
 import { UserRole } from '../user.types';
 import { ApiProperty } from '@nestjs/swagger';
+
+@ValidatorConstraint({ async: false })
+export class IsIanaTimezoneConstraint implements ValidatorConstraintInterface {
+  validate(timezone: string) {
+    if (typeof timezone !== 'string') return false;
+    try {
+      return Intl.supportedValuesOf('timeZone').includes(timezone);
+    } catch {
+      return false;
+    }
+  }
+
+  defaultMessage() {
+    return 'homeTimezone must be a valid IANA timezone identifier';
+  }
+}
+
+export function IsIanaTimezone(validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      constraints: [],
+      validator: IsIanaTimezoneConstraint,
+    });
+  };
+}
 
 export class GetOrCreateUserDto {
   @IsEmail()
@@ -31,12 +64,13 @@ export class CreateUserProfileInput {
   role: UserRole;
 
   @IsOptional()
-  @IsString()
+  @IsIanaTimezone()
   homeTimezone?: string;
 
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(168)
   desiredHoursPerWeek?: number;
 
   @IsOptional()
@@ -46,16 +80,13 @@ export class CreateUserProfileInput {
 
 export class UpdateUserProfileDto {
   @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-
-  @IsOptional()
-  @IsString()
+  @IsIanaTimezone()
   homeTimezone?: string;
 
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(168)
   desiredHoursPerWeek?: number;
 
   @IsOptional()

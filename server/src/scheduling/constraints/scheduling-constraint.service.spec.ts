@@ -32,6 +32,7 @@ function makeStaff(): UserProfile {
     role: UserRole.STAFF,
     homeTimezone: 'America/New_York',
     desiredHoursPerWeek: 40,
+    staffSkills: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -397,7 +398,7 @@ describe('SchedulingConstraintService', () => {
 
   describe('consecutive days', () => {
     it('returns VIOLATION on 7th consecutive day', async () => {
-      const sevenAssignments = Array(7)
+      const sevenAssignments = Array(6)
         .fill(null)
         .map((_, i) => ({ shiftSkillId: i }));
       const mockFindByDateRange = jest.fn();
@@ -409,7 +410,7 @@ describe('SchedulingConstraintService', () => {
         .fn()
         .mockImplementation((id: number) => {
           const baseDate = new Date('2026-03-22T14:00:00Z');
-          baseDate.setDate(baseDate.getDate() - (6 - id));
+          baseDate.setDate(baseDate.getDate() - (5 - id));
           return Promise.resolve({
             shift: {
               startTime: baseDate,

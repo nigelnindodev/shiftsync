@@ -151,7 +151,12 @@ export class SchedulingConstraintService {
     shiftStartTime: Date,
     shiftEndTime: Date,
   ): Promise<ConstraintCheckResult> {
-    const shiftDate = shiftStartTime.toISOString().split('T')[0];
+    const shiftDate = new Intl.DateTimeFormat('fr-CA', {
+      timeZone: staffMember.homeTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(shiftStartTime); // YYYY-MM-DD in local time
 
     const exceptions = await this.availabilityRepo.findExceptionsForDate(
       ctx.staffMemberId,
@@ -168,7 +173,10 @@ export class SchedulingConstraintService {
     }
 
     const overrideWindows = exceptions.filter(
-      (e) => e.isAvailable && e.wallStartTime && e.wallEndTime,
+      (e) =>
+        e.isAvailable &&
+        ((e.wallStartTime && e.wallEndTime) ||
+          (!e.wallStartTime && !e.wallEndTime)),
     );
     if (overrideWindows.length > 0) {
       const shiftStartWall = this.toWallTime(
@@ -179,10 +187,17 @@ export class SchedulingConstraintService {
         shiftEndTime,
         staffMember.homeTimezone,
       );
-      const covered = overrideWindows.some(
-        (w) =>
-          w.wallStartTime! <= shiftStartWall && w.wallEndTime! >= shiftEndWall,
-      );
+      const startMins = this.wallToMinutes(shiftStartWall);
+      let endMins = this.wallToMinutes(shiftEndWall);
+      if (endMins <= startMins) endMins += 24 * 60;
+
+      const covered = overrideWindows.some((w) => {
+        if (!w.wallStartTime && !w.wallEndTime) return true; // Full day override
+        const wStart = this.wallToMinutes(w.wallStartTime!);
+        let wEnd = this.wallToMinutes(w.wallEndTime!);
+        if (wEnd <= wStart) wEnd += 24 * 60;
+        return wStart <= startMins && wEnd >= endMins;
+      });
       if (!covered) {
         return {
           type: 'VIOLATION',
@@ -197,7 +212,10 @@ export class SchedulingConstraintService {
     const recurring = await this.availabilityRepo.findByStaffMember(
       ctx.staffMemberId,
     );
-    const dayOfWeek = this.getDayOfWeek(shiftStartTime);
+    const dayOfWeek = this.getDayOfWeekLocalized(
+      shiftStartTime,
+      staffMember.homeTimezone,
+    );
     const dayAvailability = recurring.filter(
       (a) => (a.dayOfWeek as string) === dayOfWeek,
     );
@@ -210,9 +228,16 @@ export class SchedulingConstraintService {
       shiftEndTime,
       staffMember.homeTimezone,
     );
-    const fullyCovered = dayAvailability.some(
-      (a) => a.wallStartTime <= shiftStartWall && a.wallEndTime >= shiftEndWall,
-    );
+    const startMins = this.wallToMinutes(shiftStartWall);
+    let endMins = this.wallToMinutes(shiftEndWall);
+    if (endMins <= startMins) endMins += 24 * 60;
+
+    const fullyCovered = dayAvailability.some((a) => {
+      const aStart = this.wallToMinutes(a.wallStartTime);
+      let aEnd = this.wallToMinutes(a.wallEndTime);
+      if (aEnd <= aStart) aEnd += 24 * 60;
+      return aStart <= startMins && aEnd >= endMins;
+    });
     if (!fullyCovered) {
       return {
         type: 'VIOLATION',
@@ -465,5 +490,20 @@ export class SchedulingConstraintService {
   private getDayOfWeek(date: Date): string {
     const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
     return days[new Date(date).getDay()];
+  }
+
+  private getDayOfWeekLocalized(utcDate: Date, timezone: string): string {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      weekday: 'short',
+      timeZone: timezone,
+    }).formatToParts(utcDate);
+    const weekday =
+      parts.find((p) => p.type === 'weekday')?.value.toUpperCase() ?? 'SUN';
+    return weekday;
+  }
+
+  private wallToMinutes(wallTime: string): number {
+    const [h, m] = wallTime.split(':').map(Number);
+    return h * 60 + m;
   }
 }
