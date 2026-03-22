@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -13,6 +14,7 @@ import { UserRole } from '../user.types';
 import { StaffSkill } from '../../staffing/entities/staff-skill.entity';
 
 @Entity('user_profile')
+@Check('desired_hours_positive', '"desired_hours_per_week" >= 0')
 export class UserProfile {
   @PrimaryGeneratedColumn()
   id: number;
@@ -31,7 +33,7 @@ export class UserProfile {
   })
   role: UserRole;
 
-  @Column({ name: 'home_timezone', default: 'America/New_York' })
+  @Column({ name: 'home_timezone' })
   homeTimezone: string;
 
   @Column({ name: 'desired_hours_per_week', type: 'int', nullable: true })

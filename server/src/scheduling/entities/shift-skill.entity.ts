@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -9,10 +10,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Min } from 'class-validator';
 import { Assignment } from './assignment.entity';
 import { Shift } from './shift.entity';
 
 @Entity('shift_skills')
+@Check('headcount_positive', '"headcount" > 0')
 export class ShiftSkill {
   @PrimaryGeneratedColumn()
   id: number;
@@ -28,6 +31,7 @@ export class ShiftSkill {
   @Column({ name: 'skill_id' })
   skillId: number;
 
+  @Min(1)
   @Column({ default: 1 })
   headcount: number;
 

@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { UserRole } from '../user.types';
@@ -35,6 +36,7 @@ export class CreateUserProfileInput {
 
   @IsOptional()
   @IsInt()
+  @Min(0)
   desiredHoursPerWeek?: number;
 
   @IsOptional()
@@ -53,6 +55,7 @@ export class UpdateUserProfileDto {
 
   @IsOptional()
   @IsInt()
+  @Min(0)
   desiredHoursPerWeek?: number;
 
   @IsOptional()

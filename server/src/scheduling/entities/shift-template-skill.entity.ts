@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -13,6 +14,7 @@ import { RecurringAssignment } from './recurring-assignment.entity';
 import { ShiftTemplate } from './shift-template.entity';
 
 @Entity('shift_template_skills')
+@Check('headcount_positive', '"headcount" > 0')
 export class ShiftTemplateSkill {
   @PrimaryGeneratedColumn()
   id: number;

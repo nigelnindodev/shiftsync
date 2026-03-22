@@ -72,10 +72,20 @@ export class AssignmentRepository {
       const shiftSkill = await queryRunner.manager.findOne(ShiftSkill, {
         where: { id: shiftSkillId },
         relations: ['shift'],
+        lock: { mode: 'pessimistic_write' },
       });
       if (!shiftSkill) {
         await queryRunner.rollbackTransaction();
         return Result.err(new Error(`ShiftSkill ${shiftSkillId} not found`));
+      }
+
+      const assignmentCount = await queryRunner.manager.count(Assignment, {
+        where: { shiftSkillId, state: AssignmentState.ASSIGNED },
+      });
+
+      if (assignmentCount >= shiftSkill.headcount) {
+        await queryRunner.rollbackTransaction();
+        return Result.err(new Error(`Shift skill headcount reached`));
       }
 
       await queryRunner.manager.query(
@@ -122,7 +132,12 @@ export class AssignmentRepository {
     state: AssignmentState,
   ): Promise<Result<void, Error>> {
     try {
-      await this.repo.update(id, { state });
+      const res = await this.repo.update(id, { state });
+      if (res.affected === 0) {
+        return Result.err(
+          new Error(`Assignment ${id} not found or state unchanged`),
+        );
+      }
       return Result.ok(undefined);
     } catch (e) {
       this.logger.error(`Failed to update assignment ${id} state`, e);
