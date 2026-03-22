@@ -90,7 +90,7 @@ export class AssignmentRepository {
           AND s.end_time > $3
         FOR UPDATE
         `,
-        [staffMemberId, shiftSkill.shift!.endTime, shiftSkill.shift!.startTime],
+        [staffMemberId, shiftSkill.shift.endTime, shiftSkill.shift.startTime],
       );
 
       const assignment = queryRunner.manager.create(Assignment, {

@@ -17,6 +17,10 @@ export class ClockService {
         this.logger.warn(
           `Invalid SIMULATED_TIME_UTC: ${override}, error: ${e instanceof Error ? e.message : String(e)}`,
         );
+
+        /**
+         * Find better in future to handle this instead of hiding error under the rug and returning Now.instant()
+         */
         return Temporal.Now.instant();
       }
     }

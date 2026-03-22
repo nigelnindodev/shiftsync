@@ -49,7 +49,7 @@ export class Schedule {
   @Column({ name: 'locked_at', type: 'timestamptz', nullable: true })
   lockedAt?: Date;
 
-  @OneToMany('Shift', 'schedule')
+  @OneToMany(() => Shift, (shift) => shift.schedule)
   shifts: Shift[];
 
   @CreateDateColumn({ name: 'created_at' })

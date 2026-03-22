@@ -204,6 +204,26 @@ return await maybeUser.match({
 - Constraint checks are a **gate, not state** — nothing persisted on failure
 - BullMQ jobs must be **idempotent**
 
+### TypeORM Entity Rules
+- Always use arrow function syntax for relation decorators — never string references:
+  - CORRECT: `@ManyToOne(() => ShiftSkill, (shiftSkill) => shiftSkill.assignments)`
+  - WRONG: `@ManyToOne('ShiftSkill', 'assignments')`
+- `@ManyToOne` + `@JoinColumn` always sit on the **object property**, never on the
+  scalar FK column:
+  - CORRECT: decorator on `shiftSkill: ShiftSkill`, separate `@Column` on `shiftSkillId: number`
+  - WRONG: decorator on `shiftSkillId: number`
+- `@Index()` sits alongside `@ManyToOne` on the object property — not on the scalar FK column
+- Always declare the inverse side of every relationship — a `@ManyToOne` without a
+  corresponding `@OneToMany` on the other entity will cause TypeORM to fail to resolve
+  the relation at runtime
+- Never use lazy inline imports for entity types — always import at the top of the file.
+  Use arrow function syntax `() => Entity` to break circular dependencies, not inline imports:
+  - CORRECT: `import { ShiftSkill } from './shift-skill.entity';` at top of file
+  - WRONG: `shiftSkill?: import('./shift-skill.entity').ShiftSkill`
+- Always expose both the object property (for relation loading) and the scalar FK column
+  (for querying without joins) as separate class members
+- Always include `@UpdateDateColumn` on every entity for consistency
+
 ### Repository Pattern
 
 - One repository per aggregate (e.g., `ShiftRepository`, `UsersRepository`)

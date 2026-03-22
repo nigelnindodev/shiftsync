@@ -25,6 +25,8 @@ export class ShiftTemplate {
   @Column({ name: 'wall_end_time', type: 'time' })
   wallEndTime: string;
 
+  // TODO: May change type if "find templates that occur on Monday" is required
+  // Don't think we need this for now
   @Column({ name: 'recurrence_days', type: 'simple-array' })
   recurrenceDays: string[];
 
@@ -34,10 +36,13 @@ export class ShiftTemplate {
   @Column({ name: 'effective_to', type: 'timestamptz', nullable: true })
   effectiveTo?: Date;
 
-  @OneToMany('ShiftTemplateSkill', 'template')
+  @OneToMany(() => ShiftTemplateSkill, (skill) => skill.template)
   skills: ShiftTemplateSkill[];
 
-  @OneToMany('RecurringAssignment', 'template')
+  @OneToMany(
+    () => RecurringAssignment,
+    (recurringAssignment) => recurringAssignment.template,
+  )
   recurringAssignments: RecurringAssignment[];
 
   @CreateDateColumn({ name: 'created_at' })

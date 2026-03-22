@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { UserRole } from '../user.types';
+import { StaffSkill } from '../../staffing/entities/staff-skill.entity';
 
 @Entity('user_profile')
 export class UserProfile {
@@ -39,8 +40,8 @@ export class UserProfile {
   @Column({ name: 'desired_hours_note', nullable: true })
   desiredHoursNote?: string;
 
-  @OneToMany('StaffSkill', 'staffMember')
-  staffSkills?: import('../../staffing/entities/staff-skill.entity').StaffSkill[];
+  @OneToMany(() => StaffSkill, (staffSkill) => staffSkill.staffMember)
+  staffSkills: StaffSkill[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

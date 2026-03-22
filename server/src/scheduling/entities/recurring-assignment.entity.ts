@@ -19,31 +19,31 @@ export class RecurringAssignment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => ShiftTemplate, 'recurringAssignments', {
+  @ManyToOne(() => ShiftTemplate, (template) => template.recurringAssignments, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'shift_template_id' })
-  template?: ShiftTemplate;
-
   @Index()
+  template: ShiftTemplate;
+
   @Column({ name: 'shift_template_id' })
   shiftTemplateId: number;
 
-  @ManyToOne(() => ShiftTemplateSkill, 'recurringAssignments', {
+  @ManyToOne(() => ShiftTemplateSkill, (skill) => skill.recurringAssignments, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'shift_template_skill_id' })
-  shiftTemplateSkill?: ShiftTemplateSkill;
-
   @Index()
+  shiftTemplateSkill: ShiftTemplateSkill;
+
   @Column({ name: 'shift_template_skill_id' })
   shiftTemplateSkillId: number;
 
   @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'staff_member_id' })
-  staffMember?: UserProfile;
-
   @Index()
+  staffMember: UserProfile;
+
   @Column({ name: 'staff_member_id' })
   staffMemberId: number;
 
@@ -56,7 +56,7 @@ export class RecurringAssignment {
   @Column({ name: 'effective_to', type: 'timestamptz', nullable: true })
   effectiveTo?: Date;
 
-  @OneToMany('Assignment', 'recurringAssignment')
+  @OneToMany(() => Assignment, (assignment) => assignment.recurringAssignment)
   assignments: Assignment[];
 
   @CreateDateColumn({ name: 'created_at' })

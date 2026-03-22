@@ -3,10 +3,13 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { RecurringAssignment } from './recurring-assignment.entity';
+import { ShiftSkill } from './shift-skill.entity';
 
 export enum AssignmentState {
   ASSIGNED = 'ASSIGNED',
@@ -23,10 +26,27 @@ export class Assignment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne('ShiftSkill', 'assignments', { onDelete: 'CASCADE' })
+  @ManyToOne(() => ShiftSkill, (shiftSkill) => shiftSkill.assignments, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'shift_skill_id' })
   @Index()
+  shiftSkill: ShiftSkill;
+
   @Column({ name: 'shift_skill_id' })
   shiftSkillId: number;
+
+  @ManyToOne(
+    () => RecurringAssignment,
+    (recurringAssignment) => recurringAssignment.assignments,
+    { onDelete: 'SET NULL', nullable: true },
+  )
+  @JoinColumn({ name: 'recurring_assignment_id' })
+  @Index()
+  recurringAssignment?: RecurringAssignment;
+
+  @Column({ name: 'recurring_assignment_id', nullable: true })
+  recurringAssignmentId?: number;
 
   @Index()
   @Column({ name: 'staff_member_id' })
@@ -35,17 +55,8 @@ export class Assignment {
   @Column({ name: 'assigned_by_manager_id', nullable: true })
   assignedByManagerId?: number;
 
-  @ManyToOne('RecurringAssignment', 'assignments', {
-    onDelete: 'SET NULL',
-    nullable: true,
-  })
-  @Index()
-  @Column({ name: 'recurring_assignment_id', nullable: true })
-  recurringAssignmentId?: number;
-
-  recurringAssignment?: import('./recurring-assignment.entity').RecurringAssignment;
-
-  shiftSkill?: import('./shift-skill.entity').ShiftSkill;
+  @Column({ name: 'swap_target_id', nullable: true })
+  swapTargetId?: number;
 
   @Column({
     type: 'enum',
@@ -53,9 +64,6 @@ export class Assignment {
     default: AssignmentState.ASSIGNED,
   })
   state: AssignmentState;
-
-  @Column({ name: 'swap_target_id', nullable: true })
-  swapTargetId?: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
