@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { Temporal } from '@js-temporal/polyfill';
 import {
   Location,
   Skill,
@@ -99,16 +100,22 @@ async function seed() {
   ];
 
   for (const admin of admins) {
-    const existing = await profileRepo.findOne({
-      where: { user: { email: admin.email } },
-      relations: ['user'],
-    });
-    if (existing) {
+    let user = await userRepo.findOne({ where: { email: admin.email } });
+    let profile: UserProfile | null = null;
+    if (user) {
+      profile = await profileRepo.findOne({
+        where: { user: { email: admin.email } },
+        relations: ['user'],
+      });
+    }
+    if (profile) {
       console.log(`Admin "${admin.email}" already exists`);
     } else {
-      const user = await userRepo.save(
-        userRepo.create({ email: admin.email, name: admin.name }),
-      );
+      if (!user) {
+        user = await userRepo.save(
+          userRepo.create({ email: admin.email, name: admin.name }),
+        );
+      }
       await profileRepo.save(
         profileRepo.create({
           externalId: user.externalId,
@@ -150,9 +157,12 @@ async function seed() {
       relations: ['user'],
     });
     if (!profile) {
-      const user = await userRepo.save(
-        userRepo.create({ email: mgr.email, name: mgr.name }),
-      );
+      let user = await userRepo.findOne({ where: { email: mgr.email } });
+      if (!user) {
+        user = await userRepo.save(
+          userRepo.create({ email: mgr.email, name: mgr.name }),
+        );
+      }
       profile = await profileRepo.save(
         profileRepo.create({
           externalId: user.externalId,
@@ -164,12 +174,17 @@ async function seed() {
     } else {
       console.log(`Manager "${mgr.email}" already exists`);
     }
-    await managerLocationRepo.save(
-      managerLocationRepo.create({
-        managerId: profile.id,
-        locationId: mgr.location.id,
-      }),
-    );
+    const existingMapping = await managerLocationRepo.findOne({
+      where: { managerId: profile.id, locationId: mgr.location.id },
+    });
+    if (!existingMapping) {
+      await managerLocationRepo.save(
+        managerLocationRepo.create({
+          managerId: profile.id,
+          locationId: mgr.location.id,
+        }),
+      );
+    }
   }
 
   // --- Staff Members ---
@@ -293,14 +308,20 @@ async function seed() {
     data: (typeof staffData)[0];
   }> = [];
   for (const staff of staffData) {
-    let profile = await profileRepo.findOne({
-      where: { user: { email: staff.email } },
-      relations: ['user'],
-    });
+    let user = await userRepo.findOne({ where: { email: staff.email } });
+    let profile: UserProfile | null = null;
+    if (user) {
+      profile = await profileRepo.findOne({
+        where: { user: { email: staff.email } },
+        relations: ['user'],
+      });
+    }
     if (!profile) {
-      const user = await userRepo.save(
-        userRepo.create({ email: staff.email, name: staff.name }),
-      );
+      if (!user) {
+        user = await userRepo.save(
+          userRepo.create({ email: staff.email, name: staff.name }),
+        );
+      }
       profile = await profileRepo.save(
         profileRepo.create({
           externalId: user.externalId,
@@ -375,22 +396,32 @@ async function seed() {
   }
 
   // --- Sample Shifts (2 weeks ahead) ---
-  const now = new Date();
+  const now = Temporal.Now.instant();
   const downtown = savedLocations[0];
+  const downtownTimezone = downtown.timezone;
 
   for (let dayOffset = 1; dayOffset <= 14; dayOffset++) {
-    const shiftDate = new Date(now);
-    shiftDate.setDate(shiftDate.getDate() + dayOffset);
-    shiftDate.setHours(10, 0, 0, 0);
-
-    const shiftEnd = new Date(shiftDate);
-    shiftEnd.setHours(18, 0, 0, 0);
+    const baseDate = now
+      .toZonedDateTimeISO(downtownTimezone)
+      .add({ days: dayOffset });
+    const shiftDate = new Date(
+      baseDate
+        .with({ hour: 10, minute: 0, second: 0, nanosecond: 0 })
+        .toInstant()
+        .toString(),
+    );
+    const shiftEnd = new Date(
+      baseDate
+        .with({ hour: 18, minute: 0, second: 0, nanosecond: 0 })
+        .toInstant()
+        .toString(),
+    );
 
     const existingShift = await shiftRepo.findOne({
       where: {
         locationId: downtown.id,
-        startTime: shiftDate,
-        endTime: shiftEnd,
+        startTime: new Date(shiftDate),
+        endTime: new Date(shiftEnd),
       },
     });
 
@@ -441,6 +472,9 @@ async function seed() {
             state: AssignmentState.ASSIGNED,
           }),
         );
+        await shiftRepo.update(shift.id, {
+          state: ShiftState.PARTIALLY_FILLED,
+        });
       }
 
       console.log(`Created shift: ${shiftDate.toISOString()} at Downtown`);

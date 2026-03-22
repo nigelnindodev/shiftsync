@@ -48,7 +48,19 @@ export class ScheduleRepository {
     additionalFields?: Partial<Schedule>,
   ): Promise<Result<void, Error>> {
     try {
-      await this.repo.update(id, { state, ...additionalFields });
+      const updateData: Record<string, unknown> = { state };
+      if (additionalFields) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { state: _unused, ...rest } = additionalFields;
+        Object.assign(updateData, rest);
+      }
+      const result = await this.repo.update(
+        id,
+        updateData as Partial<Schedule>,
+      );
+      if (result.affected === 0) {
+        return Result.err(new Error(`Schedule ${id} not found`));
+      }
       return Result.ok(undefined);
     } catch (e) {
       this.logger.error(`Failed to update schedule ${id}`, e);

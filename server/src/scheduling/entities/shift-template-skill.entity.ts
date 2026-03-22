@@ -3,9 +3,12 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { ShiftTemplate } from './shift-template.entity';
 
 @Entity('shift_template_skills')
 export class ShiftTemplateSkill {
@@ -13,11 +16,12 @@ export class ShiftTemplateSkill {
   id: number;
 
   @ManyToOne('ShiftTemplate', 'skills', { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'shift_template_id' })
+  template?: ShiftTemplate;
+
   @Index()
   @Column({ name: 'shift_template_id' })
   shiftTemplateId: number;
-
-  template?: import('./shift-template.entity').ShiftTemplate;
 
   @Column({ name: 'skill_id' })
   skillId: number;
@@ -27,4 +31,7 @@ export class ShiftTemplateSkill {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ShiftTemplate } from '../entities/shift-template.entity';
 import { ShiftTemplateSkill } from '../entities/shift-template-skill.entity';
 import { Result } from 'true-myth';
@@ -14,6 +14,7 @@ export class ShiftTemplateRepository {
     private readonly templateRepo: Repository<ShiftTemplate>,
     @InjectRepository(ShiftTemplateSkill)
     private readonly skillRepo: Repository<ShiftTemplateSkill>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findById(id: number): Promise<ShiftTemplate | null> {
@@ -21,10 +22,15 @@ export class ShiftTemplateRepository {
   }
 
   async findActiveTemplates(): Promise<ShiftTemplate[]> {
-    return this.templateRepo.find({
-      where: {},
-      relations: ['skills'],
-    });
+    const now = new Date();
+    return this.templateRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.skills', 'skills')
+      .where('t.effective_from <= :now', { now })
+      .andWhere('(t.effective_to IS NULL OR t.effective_to >= :now)', {
+        now,
+      })
+      .getMany();
   }
 
   async findActiveTemplatesUpToDate(upToDate: Date): Promise<ShiftTemplate[]> {
@@ -43,19 +49,22 @@ export class ShiftTemplateRepository {
     skillSlots: Array<{ skillId: number; headcount: number }>,
   ): Promise<Result<ShiftTemplate, Error>> {
     try {
-      const template = this.templateRepo.create(data as ShiftTemplate);
-      const savedTemplate = await this.templateRepo.save(template);
+      const result = await this.dataSource.transaction(async (manager) => {
+        const template = manager.create(ShiftTemplate, data as ShiftTemplate);
+        const savedTemplate = await manager.save(template);
 
-      for (const slot of skillSlots) {
-        const skillEntity = this.skillRepo.create({
-          shiftTemplateId: savedTemplate.id,
-          skillId: slot.skillId,
-          headcount: slot.headcount,
-        });
-        await this.skillRepo.save(skillEntity);
-      }
+        for (const slot of skillSlots) {
+          const skillEntity = manager.create(ShiftTemplateSkill, {
+            shiftTemplateId: savedTemplate.id,
+            skillId: slot.skillId,
+            headcount: slot.headcount,
+          });
+          await manager.save(skillEntity);
+        }
 
-      return Result.ok(savedTemplate);
+        return savedTemplate;
+      });
+      return Result.ok(result);
     } catch (e) {
       this.logger.error(`Failed to create shift template`, e);
       return Result.err(

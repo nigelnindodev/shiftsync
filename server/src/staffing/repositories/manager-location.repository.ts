@@ -18,13 +18,14 @@ export class ManagerLocationRepository {
     locationId: number,
   ): Promise<Result<ManagerLocation, Error>> {
     try {
+      await this.repo.upsert(
+        { managerId, locationId },
+        { conflictPaths: ['managerId', 'locationId'] },
+      );
       const existing = await this.repo.findOne({
         where: { managerId, locationId },
       });
-      if (existing) return Result.ok(existing);
-      const ml = this.repo.create({ managerId, locationId });
-      const saved = await this.repo.save(ml);
-      return Result.ok(saved);
+      return Result.ok(existing!);
     } catch (e) {
       this.logger.error(
         `Failed to assign location ${locationId} to manager ${managerId}`,

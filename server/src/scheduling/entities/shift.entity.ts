@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -29,11 +30,12 @@ export class Shift {
   templateId?: number;
 
   @ManyToOne('Schedule', 'shifts', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'schedule_id' })
+  schedule?: import('./schedule.entity').Schedule;
+
   @Index()
   @Column({ name: 'schedule_id', nullable: true })
   scheduleId?: number;
-
-  schedule?: import('./schedule.entity').Schedule;
 
   @Index()
   @Column({ name: 'location_id' })

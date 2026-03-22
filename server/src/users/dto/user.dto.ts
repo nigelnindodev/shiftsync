@@ -21,6 +21,27 @@ export class GetOrCreateUserDto {
   name: string;
 }
 
+export class CreateUserProfileInput {
+  @IsString()
+  @IsNotEmpty()
+  externalId: string;
+
+  @IsEnum(UserRole)
+  role: UserRole;
+
+  @IsOptional()
+  @IsString()
+  homeTimezone?: string;
+
+  @IsOptional()
+  @IsInt()
+  desiredHoursPerWeek?: number;
+
+  @IsOptional()
+  @IsString()
+  desiredHoursNote?: string;
+}
+
 export class UpdateUserProfileDto {
   @IsOptional()
   @IsEnum(UserRole)
@@ -48,15 +69,12 @@ export class UserProfileDto {
   role: UserRole;
 
   @Expose()
-  @IsOptional()
   homeTimezone?: string;
 
   @Expose()
-  @IsOptional()
   desiredHoursPerWeek?: number;
 
   @Expose()
-  @IsOptional()
   desiredHoursNote?: string;
 }
 

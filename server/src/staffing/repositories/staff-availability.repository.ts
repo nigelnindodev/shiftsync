@@ -107,4 +107,16 @@ export class StaffAvailabilityRepository {
       );
     }
   }
+
+  async deleteException(id: number): Promise<Result<void, Error>> {
+    try {
+      await this.exceptionRepo.delete(id);
+      return Result.ok(undefined);
+    } catch (e) {
+      this.logger.error(`Failed to delete exception id: ${id}`, e);
+      return Result.err(
+        e instanceof Error ? e : new Error('Failed to delete exception'),
+      );
+    }
+  }
 }

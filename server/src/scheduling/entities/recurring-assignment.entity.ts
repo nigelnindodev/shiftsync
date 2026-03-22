@@ -3,33 +3,45 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Assignment } from './assignment.entity';
+import { UserProfile } from '../../users/entity/profile.entity';
+import { ShiftTemplate } from './shift-template.entity';
+import { ShiftTemplateSkill } from './shift-template-skill.entity';
 
 @Entity('recurring_assignments')
 export class RecurringAssignment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne('ShiftTemplate', 'recurringAssignments', { onDelete: 'CASCADE' })
+  @ManyToOne(() => ShiftTemplate, 'recurringAssignments', {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'shift_template_id' })
+  template?: ShiftTemplate;
+
   @Index()
   @Column({ name: 'shift_template_id' })
   shiftTemplateId: number;
 
-  template?: import('./shift-template.entity').ShiftTemplate;
-
-  @ManyToOne('ShiftTemplateSkill', 'recurringAssignments', {
+  @ManyToOne(() => ShiftTemplateSkill, 'recurringAssignments', {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'shift_template_skill_id' })
+  shiftTemplateSkill?: ShiftTemplateSkill;
+
   @Index()
   @Column({ name: 'shift_template_skill_id' })
   shiftTemplateSkillId: number;
 
-  shiftTemplateSkill?: import('./shift-template-skill.entity').ShiftTemplateSkill;
+  @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'staff_member_id' })
+  staffMember?: UserProfile;
 
   @Index()
   @Column({ name: 'staff_member_id' })

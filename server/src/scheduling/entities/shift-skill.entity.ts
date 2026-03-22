@@ -3,11 +3,13 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Assignment } from './assignment.entity';
+import { Shift } from './shift.entity';
 
 @Entity('shift_skills')
 export class ShiftSkill {
@@ -15,11 +17,12 @@ export class ShiftSkill {
   id: number;
 
   @ManyToOne('Shift', 'skills', { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'shift_id' })
+  shift?: Shift;
+
   @Index()
   @Column({ name: 'shift_id' })
   shiftId: number;
-
-  shift?: import('./shift.entity').Shift;
 
   @Column({ name: 'skill_id' })
   skillId: number;

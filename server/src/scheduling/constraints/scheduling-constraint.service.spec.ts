@@ -59,6 +59,7 @@ function makeMocks(overrides: Record<string, unknown> = {}) {
         .mockResolvedValue({ isJust: true, value: defaultShift }),
     },
     mockShiftSkillRepo: {
+      findById: jest.fn().mockResolvedValue({ id: 5, skillId: 1 }),
       findByIdWithShift: jest.fn().mockResolvedValue(null),
     },
     mockDataSource: { query: jest.fn().mockResolvedValue([]) },

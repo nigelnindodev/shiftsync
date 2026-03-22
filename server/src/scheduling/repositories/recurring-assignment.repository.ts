@@ -26,13 +26,19 @@ export class RecurringAssignmentRepository {
     templateSkillId: number,
     staffMemberId: number,
   ): Promise<RecurringAssignment | null> {
-    return this.repo.findOne({
-      where: {
-        shiftTemplateId: templateId,
-        shiftTemplateSkillId: templateSkillId,
-        staffMemberId,
-      },
-    });
+    const now = new Date();
+    return this.repo
+      .createQueryBuilder('ra')
+      .where('ra.shift_template_id = :templateId', { templateId })
+      .andWhere('ra.shift_template_skill_id = :templateSkillId', {
+        templateSkillId,
+      })
+      .andWhere('ra.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('ra.effective_from <= :now', { now })
+      .andWhere('(ra.effective_to IS NULL OR ra.effective_to >= :now)', {
+        now,
+      })
+      .getOne();
   }
 
   async create(

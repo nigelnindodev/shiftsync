@@ -18,6 +18,7 @@ export enum ScheduleState {
 }
 
 @Entity('schedules')
+@Index('idx_schedule_location_week', ['locationId', 'weekOf'], { unique: true })
 export class Schedule {
   @PrimaryGeneratedColumn()
   id: number;

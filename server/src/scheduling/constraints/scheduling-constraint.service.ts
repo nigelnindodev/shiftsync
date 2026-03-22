@@ -92,16 +92,28 @@ export class SchedulingConstraintService {
   private async checkSkillMatch(
     ctx: CreateAssignmentContext,
   ): Promise<ConstraintCheckResult> {
+    const shiftSkill = await this.shiftSkillRepo.findById(ctx.shiftSkillId);
+    if (!shiftSkill) {
+      return {
+        type: 'VIOLATION',
+        code: 'SKILL_MISMATCH',
+        message: 'Shift skill slot not found',
+        details: { shiftSkillId: ctx.shiftSkillId },
+      };
+    }
     const hasSkill = await this.staffSkillRepo.hasSkill(
       ctx.staffMemberId,
-      ctx.shiftSkillId,
+      shiftSkill.skillId,
     );
     if (!hasSkill) {
       return {
         type: 'VIOLATION',
         code: 'SKILL_MISMATCH',
         message: 'Staff member does not have the required skill for this shift',
-        details: { shiftSkillId: ctx.shiftSkillId },
+        details: {
+          shiftSkillId: ctx.shiftSkillId,
+          skillId: shiftSkill.skillId,
+        },
       };
     }
     return { type: 'VIOLATION', code: 'OK', message: '' };
@@ -237,7 +249,7 @@ export class SchedulingConstraintService {
     shiftStartTime: Date,
   ): Promise<ConstraintCheckResult> {
     const twoWeeksAgo = new Date(
-      shiftStartTime.getTime() - 14 * 60 * 60 * 1000,
+      shiftStartTime.getTime() - 14 * 24 * 60 * 60 * 1000,
     );
 
     const rawResult: unknown = await this.dataSource.query(

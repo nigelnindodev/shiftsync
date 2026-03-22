@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Shift, ShiftState } from '../entities/shift.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
 import { Maybe, Result } from 'true-myth';
@@ -33,6 +33,7 @@ export class ShiftRepository {
     private readonly shiftRepo: Repository<Shift>,
     @InjectRepository(ShiftSkill)
     private readonly skillRepo: Repository<ShiftSkill>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findById(id: number): Promise<Maybe<Shift>> {
@@ -54,27 +55,30 @@ export class ShiftRepository {
     skillSlots: Array<{ skillId: number; headcount: number }>,
   ): Promise<Result<ShiftWithSkillSlots, Error>> {
     try {
-      const shift = this.shiftRepo.create(data as Shift);
-      const savedShift = await this.shiftRepo.save(shift);
+      const result = await this.dataSource.transaction(async (manager) => {
+        const shift = manager.create(Shift, data as Shift);
+        const savedShift = await manager.save(shift);
 
-      const createdSlots: ShiftSkillWithFill[] = [];
-      for (const slot of skillSlots) {
-        const skillEntity = this.skillRepo.create({
-          shiftId: savedShift.id,
-          skillId: slot.skillId,
-          headcount: slot.headcount,
-        });
-        const savedSlot = await this.skillRepo.save(skillEntity);
-        createdSlots.push({
-          id: savedSlot.id,
-          skillId: savedSlot.skillId,
-          skillName: '',
-          headcount: savedSlot.headcount,
-          assignedCount: 0,
-        });
-      }
+        const createdSlots: ShiftSkillWithFill[] = [];
+        for (const slot of skillSlots) {
+          const skillEntity = manager.create(ShiftSkill, {
+            shiftId: savedShift.id,
+            skillId: slot.skillId,
+            headcount: slot.headcount,
+          });
+          const savedSlot = await manager.save(skillEntity);
+          createdSlots.push({
+            id: savedSlot.id,
+            skillId: savedSlot.skillId,
+            skillName: '',
+            headcount: savedSlot.headcount,
+            assignedCount: 0,
+          });
+        }
 
-      return Result.ok({ ...savedShift, skills: createdSlots });
+        return { ...savedShift, skills: createdSlots };
+      });
+      return Result.ok(result);
     } catch (e) {
       this.logger.error(`Failed to create shift`, e);
       return Result.err(
