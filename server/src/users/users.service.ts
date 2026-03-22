@@ -5,6 +5,7 @@ import { User } from './entity/user.entity';
 import { Maybe, Result } from 'true-myth';
 import { UserProfileRepository } from './user-profile.repository';
 import { UserProfile } from './entity/profile.entity';
+import { UserRole } from './user.types';
 
 @Injectable()
 export class UsersService {
@@ -127,7 +128,11 @@ export class UsersService {
       Just: (userProfile) => Promise.resolve(Result.ok(userProfile)),
       Nothing: async () => {
         const createUserProfileResult =
-          await this.userProfileRepository.createUserProfile({ externalId });
+          await this.userProfileRepository.createUserProfile({
+            externalId,
+            role: UserRole.STAFF,
+            homeTimezone: 'America/New_York',
+          });
         return createUserProfileResult.match({
           Ok: (userProfile) => Promise.resolve(Result.ok(userProfile)),
           Err: (e) => {

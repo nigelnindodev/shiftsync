@@ -4,11 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-import { GamingPlatforms } from '../user.types';
+import { UserRole } from '../user.types';
 
 @Entity('user_profile')
 export class UserProfile {
@@ -22,14 +23,24 @@ export class UserProfile {
   @JoinColumn({ name: 'external_id', referencedColumnName: 'externalId' })
   user: User;
 
-  @Column({ nullable: true })
-  bio?: string;
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.STAFF,
+  })
+  role: UserRole;
 
-  @Column({ name: 'avatar_url', nullable: true })
-  avatarUrl?: string;
+  @Column({ name: 'home_timezone', default: 'America/New_York' })
+  homeTimezone: string;
 
-  @Column({ type: 'simple-json', nullable: true })
-  platforms?: GamingPlatforms[];
+  @Column({ name: 'desired_hours_per_week', type: 'int', nullable: true })
+  desiredHoursPerWeek?: number;
+
+  @Column({ name: 'desired_hours_note', nullable: true })
+  desiredHoursNote?: string;
+
+  @OneToMany('StaffSkill', 'staffMember')
+  staffSkills?: import('../../staffing/entities/staff-skill.entity').StaffSkill[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

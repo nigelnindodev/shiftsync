@@ -35,7 +35,7 @@ export class UserProfileRepository {
   async createUserProfile(
     userProfileData: Omit<
       UserProfile,
-      'id' | 'createdAt' | 'updatedAt' | 'user'
+      'id' | 'createdAt' | 'updatedAt' | 'user' | 'staffSkills'
     >,
   ): Promise<Result<UserProfile, Error>> {
     this.logger.log(

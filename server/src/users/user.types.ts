@@ -5,3 +5,9 @@ export enum GamingPlatforms {
   NINTENDO = 'nintendo',
   MOBILE = 'mobile',
 }
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  STAFF = 'STAFF',
+}

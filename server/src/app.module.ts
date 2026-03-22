@@ -10,11 +10,15 @@ import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis';
 import { SecurityModule } from './security/security.module';
 import { pinoLoggerConfig } from './common/logger';
+import { CommonModule } from './common/common.module';
+import { StaffingModule } from './staffing/staffing.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
 
 @Module({
   imports: [
     AppConfigModule,
     LoggerModule.forRoot(pinoLoggerConfig),
+    CommonModule,
     RedisModule,
     TypeOrmModule.forRootAsync({
       inject: [AppConfigService],
@@ -24,6 +28,8 @@ import { pinoLoggerConfig } from './common/logger';
     UsersModule,
     AuthModule,
     SecurityModule,
+    StaffingModule,
+    SchedulingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
