@@ -27,6 +27,7 @@ import {
   StaffAvailability,
   DayOfWeek,
 } from '../../staffing/entities/staff-availability.entity';
+import { ConstraintCode } from '../types';
 import { StaffAvailabilityException } from '../../staffing/entities/staff-availability-exception.entity';
 import { Shift, ShiftState } from '../entities/shift.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
@@ -158,7 +159,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'SKILL_MISMATCH' }),
+        expect.objectContaining({ code: ConstraintCode.SKILL_MISMATCH }),
       );
     });
 
@@ -214,7 +215,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'NOT_CERTIFIED' }),
+        expect.objectContaining({ code: ConstraintCode.NOT_CERTIFIED }),
       );
     });
 
@@ -276,7 +277,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'UNAVAILABLE' }),
+        expect.objectContaining({ code: ConstraintCode.UNAVAILABLE }),
       );
     });
   });
@@ -311,7 +312,9 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'AVAILABILITY_WINDOW_MISMATCH' }),
+        expect.objectContaining({
+          code: ConstraintCode.AVAILABILITY_WINDOW_MISMATCH,
+        }),
       );
     });
 
@@ -381,7 +384,9 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'AVAILABILITY_WINDOW_MISMATCH' }),
+        expect.objectContaining({
+          code: ConstraintCode.AVAILABILITY_WINDOW_MISMATCH,
+        }),
       );
     });
 
@@ -456,7 +461,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'OVERLAP' }),
+        expect.objectContaining({ code: ConstraintCode.OVERLAP }),
       );
     });
   });
@@ -497,7 +502,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'REST_GAP' }),
+        expect.objectContaining({ code: ConstraintCode.REST_GAP }),
       );
     });
 
@@ -577,7 +582,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'DAILY_HOURS_EXCEEDED' }),
+        expect.objectContaining({ code: ConstraintCode.DAILY_HOURS_EXCEEDED }),
       );
     });
 
@@ -616,7 +621,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.warnings).toContainEqual(
-        expect.objectContaining({ code: 'DAILY_HOURS_HIGH' }),
+        expect.objectContaining({ code: ConstraintCode.DAILY_HOURS_HIGH }),
       );
     });
   });
@@ -661,7 +666,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'WEEKLY_HOURS_EXCEEDED' }),
+        expect.objectContaining({ code: ConstraintCode.WEEKLY_HOURS_EXCEEDED }),
       );
     });
 
@@ -704,7 +709,9 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.warnings).toContainEqual(
-        expect.objectContaining({ code: 'WEEKLY_HOURS_APPROACHING' }),
+        expect.objectContaining({
+          code: ConstraintCode.WEEKLY_HOURS_APPROACHING,
+        }),
       );
     });
   });
@@ -749,7 +756,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.violations).toContainEqual(
-        expect.objectContaining({ code: 'CONSECUTIVE_DAYS_7' }),
+        expect.objectContaining({ code: ConstraintCode.CONSECUTIVE_DAYS_7 }),
       );
     });
 
@@ -792,7 +799,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       expect(result.warnings).toContainEqual(
-        expect.objectContaining({ code: 'CONSECUTIVE_DAYS_6' }),
+        expect.objectContaining({ code: ConstraintCode.CONSECUTIVE_DAYS_6 }),
       );
     });
   });
