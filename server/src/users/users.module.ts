@@ -18,5 +18,6 @@ import { SecurityModule } from 'src/security/security.module';
   ],
   providers: [UsersService, UsersRepository, EmployeeRepository],
   controllers: [UsersController, UsersMicroserviceController],
+  exports: [UsersService, EmployeeRepository],
 })
 export class UsersModule {}

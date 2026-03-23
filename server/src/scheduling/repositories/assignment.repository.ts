@@ -1,8 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import {
+  Repository,
+  DataSource,
+  FindManyOptions,
+  FindOneOptions,
+  DeepPartial,
+} from 'typeorm';
 import { Assignment, AssignmentState } from '../entities/assignment.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
+import { Shift } from '../entities/shift.entity';
 import { Result } from 'true-myth';
 
 @Injectable()
@@ -19,6 +26,20 @@ export class AssignmentRepository {
 
   async findById(id: number): Promise<Assignment | null> {
     return this.repo.findOneBy({ id });
+  }
+
+  async find(options: FindManyOptions<Assignment>): Promise<Assignment[]> {
+    return this.repo.find(options);
+  }
+
+  async findOne(
+    options: FindOneOptions<Assignment>,
+  ): Promise<Assignment | null> {
+    return this.repo.findOne(options);
+  }
+
+  async update(id: number, data: DeepPartial<Assignment>): Promise<void> {
+    await this.repo.update(id, data);
   }
 
   async findByShiftSkillId(shiftSkillId: number): Promise<Assignment[]> {
@@ -71,12 +92,19 @@ export class AssignmentRepository {
     try {
       const shiftSkill = await queryRunner.manager.findOne(ShiftSkill, {
         where: { id: shiftSkillId },
-        relations: ['shift'],
         lock: { mode: 'pessimistic_write' },
       });
       if (!shiftSkill) {
         await queryRunner.rollbackTransaction();
         return Result.err(new Error(`ShiftSkill ${shiftSkillId} not found`));
+      }
+
+      const shift = await queryRunner.manager.findOne(Shift, {
+        where: { id: shiftSkill.shiftId },
+      });
+      if (!shift) {
+        await queryRunner.rollbackTransaction();
+        return Result.err(new Error(`Shift ${shiftSkill.shiftId} not found`));
       }
 
       const assignmentCount = await queryRunner.manager.count(Assignment, {
@@ -98,21 +126,21 @@ export class AssignmentRepository {
 
       const conflicts: { id: number }[] = await queryRunner.manager.query(
         `
-        SELECT assignments.id
-        FROM assignments
-        JOIN shift_skills ss ON ss.id = assignments.shift_skill_id
+        SELECT a.id
+        FROM assignments a
+        JOIN shift_skills ss ON ss.id = a.shift_skill_id
         JOIN shifts s ON s.id = ss.shift_id
-        WHERE assignments.staff_member_id = $1
-          AND assignments.state IN (
+        WHERE a.staff_member_id = $1
+          AND a.state IN (
             'ASSIGNED',
             'SWAP_REQUESTED',
             'SWAP_PENDING_APPROVAL'
           )
           AND s.start_time < $2
           AND s.end_time > $3
-        FOR UPDATE
+        FOR UPDATE OF a
         `,
-        [staffMemberId, shiftSkill.shift.endTime, shiftSkill.shift.startTime],
+        [staffMemberId, shift.endTime, shift.startTime],
       );
 
       if (conflicts.length > 0) {
