@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OAuthProvider } from '../auth.types';
-import { User } from 'src/users/entity/user.entity';
+import { User } from '../../users/entity/user.entity';
 
 /**
  * Now (maybe eventually still) the token table does not support multiple sessions across devices

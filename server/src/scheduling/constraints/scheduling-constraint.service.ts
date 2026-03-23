@@ -13,34 +13,12 @@ import {
 } from '../repositories';
 import { UserProfile } from '../../users/entity/profile.entity';
 
-export type ConstraintViolationType = 'VIOLATION' | 'WARNING';
-
-export interface ConstraintCheckResult {
-  type: ConstraintViolationType;
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-}
-
-export interface StaffCandidate {
-  staffMemberId: number;
-  name: string;
-  hoursThisWeek: number;
-  warnings: ConstraintCheckResult[];
-}
-
-export interface ConstraintResult {
-  valid: boolean;
-  violations: ConstraintCheckResult[];
-  warnings: ConstraintCheckResult[];
-  suggestions: StaffCandidate[];
-}
-
-export interface CreateAssignmentContext {
-  staffMemberId: number;
-  shiftSkillId: number;
-  shiftId: number;
-}
+import {
+  ConstraintCode,
+  ConstraintCheckResult,
+  ConstraintResult,
+  CreateAssignmentContext,
+} from '../types';
 
 @Injectable()
 export class SchedulingConstraintService {
@@ -96,7 +74,7 @@ export class SchedulingConstraintService {
     if (!shiftSkill) {
       return {
         type: 'VIOLATION',
-        code: 'SKILL_MISMATCH',
+        code: ConstraintCode.SKILL_MISMATCH,
         message: 'Shift skill slot not found',
         details: { shiftSkillId: ctx.shiftSkillId },
       };
@@ -108,7 +86,7 @@ export class SchedulingConstraintService {
     if (!hasSkill) {
       return {
         type: 'VIOLATION',
-        code: 'SKILL_MISMATCH',
+        code: ConstraintCode.SKILL_MISMATCH,
         message: 'Staff member does not have the required skill for this shift',
         details: {
           shiftSkillId: ctx.shiftSkillId,
@@ -116,7 +94,7 @@ export class SchedulingConstraintService {
         },
       };
     }
-    return { type: 'VIOLATION', code: 'OK', message: '' };
+    return { type: 'VIOLATION', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkLocationCertification(
@@ -126,7 +104,7 @@ export class SchedulingConstraintService {
     if (shift.isNothing) {
       return {
         type: 'VIOLATION',
-        code: 'SHIFT_NOT_FOUND',
+        code: ConstraintCode.SHIFT_NOT_FOUND,
         message: 'Shift not found',
       };
     }
@@ -137,12 +115,12 @@ export class SchedulingConstraintService {
     if (!isCertified) {
       return {
         type: 'VIOLATION',
-        code: 'NOT_CERTIFIED',
+        code: ConstraintCode.NOT_CERTIFIED,
         message: 'Staff member is not certified to work at this location',
         details: { locationId: shift.value.locationId },
       };
     }
-    return { type: 'VIOLATION', code: 'OK', message: '' };
+    return { type: 'VIOLATION', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkAvailability(
@@ -167,7 +145,7 @@ export class SchedulingConstraintService {
     if (hasBlockingException) {
       return {
         type: 'VIOLATION',
-        code: 'UNAVAILABLE',
+        code: ConstraintCode.UNAVAILABLE,
         message: 'Staff member has marked this date as unavailable',
       };
     }
@@ -201,12 +179,12 @@ export class SchedulingConstraintService {
       if (!covered) {
         return {
           type: 'VIOLATION',
-          code: 'AVAILABILITY_WINDOW_MISMATCH',
+          code: ConstraintCode.AVAILABILITY_WINDOW_MISMATCH,
           message:
             "Shift does not fall within staff member's available window for this date",
         };
       }
-      return { type: 'VIOLATION', code: 'OK', message: '' };
+      return { type: 'VIOLATION', code: ConstraintCode.OK, message: '' };
     }
 
     const recurring = await this.availabilityRepo.findByStaffMember(
@@ -241,11 +219,11 @@ export class SchedulingConstraintService {
     if (!fullyCovered) {
       return {
         type: 'VIOLATION',
-        code: 'AVAILABILITY_WINDOW_MISMATCH',
+        code: ConstraintCode.AVAILABILITY_WINDOW_MISMATCH,
         message: 'Staff member is not available during this shift window',
       };
     }
-    return { type: 'VIOLATION', code: 'OK', message: '' };
+    return { type: 'VIOLATION', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkNoOverlap(
@@ -261,12 +239,12 @@ export class SchedulingConstraintService {
     if (overlapping.length > 0) {
       return {
         type: 'VIOLATION',
-        code: 'OVERLAP',
+        code: ConstraintCode.OVERLAP,
         message: 'Staff member has an overlapping assignment at this time',
         details: { overlappingAssignmentIds: overlapping.map((a) => a.id) },
       };
     }
-    return { type: 'VIOLATION', code: 'OK', message: '' };
+    return { type: 'VIOLATION', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkRestGap(
@@ -301,13 +279,13 @@ export class SchedulingConstraintService {
       if (gapHours < 10) {
         return {
           type: 'VIOLATION',
-          code: 'REST_GAP',
+          code: ConstraintCode.REST_GAP,
           message: `Minimum 10-hour rest gap required. Current gap: ${gapHours.toFixed(1)} hours`,
           details: { gapHours },
         };
       }
     }
-    return { type: 'VIOLATION', code: 'OK', message: '' };
+    return { type: 'VIOLATION', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkDailyHours(
@@ -336,7 +314,7 @@ export class SchedulingConstraintService {
     if (totalHours > 12) {
       return {
         type: 'VIOLATION',
-        code: 'DAILY_HOURS_EXCEEDED',
+        code: ConstraintCode.DAILY_HOURS_EXCEEDED,
         message: `Daily hours (${totalHours.toFixed(1)}) exceed 12-hour maximum`,
         details: { totalHours },
       };
@@ -344,12 +322,12 @@ export class SchedulingConstraintService {
     if (totalHours > 8) {
       return {
         type: 'WARNING',
-        code: 'DAILY_HOURS_HIGH',
+        code: ConstraintCode.DAILY_HOURS_HIGH,
         message: `Daily hours (${totalHours.toFixed(1)}) exceed 8-hour threshold`,
         details: { totalHours },
       };
     }
-    return { type: 'WARNING', code: 'OK', message: '' };
+    return { type: 'WARNING', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkWeeklyHours(
@@ -377,7 +355,7 @@ export class SchedulingConstraintService {
     if (totalHours > 40) {
       return {
         type: 'VIOLATION',
-        code: 'WEEKLY_HOURS_EXCEEDED',
+        code: ConstraintCode.WEEKLY_HOURS_EXCEEDED,
         message: `Weekly hours (${totalHours.toFixed(1)}) exceed 40-hour maximum`,
         details: { totalHours },
       };
@@ -385,12 +363,12 @@ export class SchedulingConstraintService {
     if (totalHours >= 35) {
       return {
         type: 'WARNING',
-        code: 'WEEKLY_HOURS_APPROACHING',
+        code: ConstraintCode.WEEKLY_HOURS_APPROACHING,
         message: `Weekly hours (${totalHours.toFixed(1)}) approaching 40-hour limit`,
         details: { totalHours },
       };
     }
-    return { type: 'WARNING', code: 'OK', message: '' };
+    return { type: 'WARNING', code: ConstraintCode.OK, message: '' };
   }
 
   private async checkConsecutiveDays(
@@ -439,7 +417,7 @@ export class SchedulingConstraintService {
     if (maxConsecutive >= 7) {
       return {
         type: 'VIOLATION',
-        code: 'CONSECUTIVE_DAYS_7',
+        code: ConstraintCode.CONSECUTIVE_DAYS_7,
         message:
           'Assignment would result in 7th consecutive day worked — requires manager override',
         details: { consecutiveDays: maxConsecutive },
@@ -448,12 +426,12 @@ export class SchedulingConstraintService {
     if (maxConsecutive >= 6) {
       return {
         type: 'WARNING',
-        code: 'CONSECUTIVE_DAYS_6',
+        code: ConstraintCode.CONSECUTIVE_DAYS_6,
         message: `Staff member has worked ${maxConsecutive} consecutive days`,
         details: { consecutiveDays: maxConsecutive },
       };
     }
-    return { type: 'WARNING', code: 'OK', message: '' };
+    return { type: 'WARNING', code: ConstraintCode.OK, message: '' };
   }
 
   private async getTotalHoursMs(
