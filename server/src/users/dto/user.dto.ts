@@ -13,6 +13,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
   ValidateNested,
+  IsUUID,
 } from 'class-validator';
 import { UserRole } from '../user.types';
 import { ApiProperty } from '@nestjs/swagger';
@@ -34,7 +35,7 @@ export class IsIanaTimezoneConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsIanaTimezone(validationOptions?: ValidationOptions) {
-  return function (object: object, propertyName: string) {
+  return function(object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -56,7 +57,7 @@ export class GetOrCreateUserDto {
 }
 
 export class CreateUserProfileInput {
-  @IsString()
+  @IsUUID()
   @IsNotEmpty()
   externalId: string;
 

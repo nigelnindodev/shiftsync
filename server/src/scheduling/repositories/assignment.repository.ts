@@ -15,7 +15,7 @@ export class AssignmentRepository {
     @InjectRepository(ShiftSkill)
     private readonly shiftSkillRepo: Repository<ShiftSkill>,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async findById(id: number): Promise<Assignment | null> {
     return this.repo.findOneBy({ id });
@@ -88,20 +88,41 @@ export class AssignmentRepository {
         return Result.err(new Error(`Shift skill headcount reached`));
       }
 
+      // Acquire a staff-scoped advisory lock (using the assignments table regclass integer
+      // namespace and the staffMemberId) so that this path is safe against concurrent
+      // creation even when the overlap query below returns zero rows.
       await queryRunner.manager.query(
+        `SELECT pg_advisory_xact_lock('assignments'::regclass::integer, $1)`,
+        [staffMemberId],
+      );
+
+      const conflicts = await queryRunner.manager.query(
         `
         SELECT assignments.id
         FROM assignments
         JOIN shift_skills ss ON ss.id = assignments.shift_skill_id
         JOIN shifts s ON s.id = ss.shift_id
         WHERE assignments.staff_member_id = $1
-          AND assignments.state = 'ASSIGNED'
+          AND assignments.state IN (
+            'ASSIGNED',
+            'SWAP_REQUESTED',
+            'SWAP_PENDING_APPROVAL'
+          )
           AND s.start_time < $2
           AND s.end_time > $3
         FOR UPDATE
         `,
         [staffMemberId, shiftSkill.shift.endTime, shiftSkill.shift.startTime],
       );
+
+      if (conflicts.length > 0) {
+        await queryRunner.rollbackTransaction();
+        return Result.err(
+          new Error(
+            `Staff member ${staffMemberId} already has an overlapping assignment`,
+          ),
+        );
+      }
 
       const assignment = queryRunner.manager.create(Assignment, {
         shiftSkillId,

@@ -14,7 +14,10 @@ import { UserRole } from '../user.types';
 import { StaffSkill } from '../../staffing/entities/staff-skill.entity';
 
 @Entity('user_profile')
-@Check('desired_hours_positive', '"desired_hours_per_week" >= 0')
+@Check(
+  'desired_hours_positive',
+  '"desired_hours_per_week" IS NULL OR "desired_hours_per_week" >= 0',
+)
 export class UserProfile {
   @PrimaryGeneratedColumn()
   id: number;
