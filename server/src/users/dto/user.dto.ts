@@ -23,7 +23,8 @@ export class IsIanaTimezoneConstraint implements ValidatorConstraintInterface {
   validate(timezone: string) {
     if (typeof timezone !== 'string') return false;
     try {
-      return Intl.supportedValuesOf('timeZone').includes(timezone);
+      new Intl.DateTimeFormat(undefined, { timeZone: timezone });
+      return true;
     } catch {
       return false;
     }
@@ -35,7 +36,7 @@ export class IsIanaTimezoneConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsIanaTimezone(validationOptions?: ValidationOptions) {
-  return function(object: object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
