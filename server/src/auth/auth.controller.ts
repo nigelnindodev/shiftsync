@@ -78,7 +78,7 @@ export class AuthController {
     });
 
     res.cookie(AUTH_COOKIE_NAME, token, {
-      httpOnly: true,
+      httpOnly: false,
       secure: this.config.isProduction,
       sameSite: 'lax',
       maxAge: this.jwtService.tokenExpiryInSeconds * 1000,

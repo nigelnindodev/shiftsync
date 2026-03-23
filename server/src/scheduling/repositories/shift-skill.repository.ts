@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOneOptions } from 'typeorm';
 import { ShiftSkill } from '../entities/shift-skill.entity';
 
 @Injectable()
@@ -12,6 +12,12 @@ export class ShiftSkillRepository {
 
   async findById(id: number): Promise<ShiftSkill | null> {
     return this.repo.findOneBy({ id });
+  }
+
+  async findOne(
+    options: FindOneOptions<ShiftSkill>,
+  ): Promise<ShiftSkill | null> {
+    return this.repo.findOne(options);
   }
 
   async findByIdWithShift(id: number): Promise<ShiftSkill | null> {

@@ -8,6 +8,7 @@ import {
   Assignment,
   RecurringAssignment,
   Schedule,
+  DomainEvent,
 } from './entities';
 import {
   ShiftRepository,
@@ -16,9 +17,18 @@ import {
   ShiftTemplateRepository,
   RecurringAssignmentRepository,
   ShiftSkillRepository,
+  DomainEventRepository,
 } from './repositories';
 import { StaffingModule } from '../staffing/staffing.module';
+import { UsersModule } from '../users/users.module';
 import { SchedulingConstraintService } from './constraints/scheduling-constraint.service';
+import { ShiftService } from './services/shift.service';
+import { AssignmentService } from './services/assignment.service';
+import { ShiftController } from './controllers/shift.controller';
+import { AssignmentController } from './controllers/assignment.controller';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { SCHEDULING_EVENTS_CLIENT } from './scheduling.constants';
+import { AppConfigService } from '../config';
 
 @Module({
   imports: [
@@ -30,9 +40,22 @@ import { SchedulingConstraintService } from './constraints/scheduling-constraint
       Assignment,
       RecurringAssignment,
       Schedule,
+      DomainEvent,
     ]),
     StaffingModule,
+    UsersModule,
+    ClientsModule.registerAsync([
+      {
+        name: SCHEDULING_EVENTS_CLIENT,
+        inject: [AppConfigService],
+        useFactory: (config: AppConfigService) => ({
+          transport: Transport.REDIS,
+          options: config.redisConfig,
+        }),
+      },
+    ]),
   ],
+  controllers: [ShiftController, AssignmentController],
   providers: [
     ShiftRepository,
     AssignmentRepository,
@@ -40,7 +63,10 @@ import { SchedulingConstraintService } from './constraints/scheduling-constraint
     ShiftTemplateRepository,
     RecurringAssignmentRepository,
     ShiftSkillRepository,
+    DomainEventRepository,
     SchedulingConstraintService,
+    ShiftService,
+    AssignmentService,
   ],
   exports: [
     ShiftRepository,
@@ -49,7 +75,10 @@ import { SchedulingConstraintService } from './constraints/scheduling-constraint
     ShiftTemplateRepository,
     RecurringAssignmentRepository,
     ShiftSkillRepository,
+    DomainEventRepository,
     SchedulingConstraintService,
+    ShiftService,
+    AssignmentService,
   ],
 })
 export class SchedulingModule {}
