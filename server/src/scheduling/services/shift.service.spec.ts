@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { of } from 'rxjs';
 import { ShiftService } from './shift.service';
 import { ShiftRepository } from '../repositories';
 import { ShiftSkillRepository } from '../repositories';
 import { DomainEventRepository } from '../repositories';
 import { SkillRepository } from '../../staffing/repositories';
+import { ClockService } from '../../common/clock/clock.service';
 import { clearDatabase } from '../../../test/db-utils';
 
 import { User } from '../../users/entity/user.entity';
@@ -26,7 +28,7 @@ describe('ShiftService (Integration)', () => {
   let emitMock: jest.Mock;
 
   beforeAll(async () => {
-    emitMock = jest.fn();
+    emitMock = jest.fn(() => of(undefined));
     module = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
@@ -56,6 +58,12 @@ describe('ShiftService (Integration)', () => {
         ShiftSkillRepository,
         DomainEventRepository,
         SkillRepository,
+        {
+          provide: ClockService,
+          useValue: {
+            now: () => ({ toString: () => '2026-03-23T12:00:00.000Z' }),
+          },
+        },
         {
           provide: SCHEDULING_EVENTS_CLIENT,
           useValue: { emit: emitMock },

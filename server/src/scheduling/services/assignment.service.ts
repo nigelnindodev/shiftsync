@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,6 +21,7 @@ import {
 } from '../events/scheduling-events';
 import { AssignmentState } from '../entities/assignment.entity';
 import { AssignmentResponseDto, EligibleStaffDto } from '../dto/assignment.dto';
+import { ClockService } from '../../common/clock/clock.service';
 
 @Injectable()
 export class AssignmentService {
@@ -31,15 +34,13 @@ export class AssignmentService {
     private readonly employeeRepo: EmployeeRepository,
     private readonly constraintService: SchedulingConstraintService,
     private readonly eventRepo: DomainEventRepository,
+    private readonly clockService: ClockService,
   ) {}
 
   async getAssignmentsForSlot(
     slotId: number,
   ): Promise<AssignmentResponseDto[]> {
-    const assignments = await this.assignmentRepo.find({
-      where: { shiftSkillId: slotId },
-      relations: ['staffMember', 'staffMember.user'],
-    });
+    const assignments = await this.assignmentRepo.findByShiftSkillId(slotId);
 
     return assignments.map((a) => ({
       assignmentId: a.id,
@@ -47,6 +48,16 @@ export class AssignmentService {
       staffName: a.staffMember?.user?.name || 'Unknown',
       state: a.state,
     }));
+  }
+
+  async getAssignmentsForShiftAndSlot(
+    shiftId: number,
+    slotId: number,
+  ): Promise<AssignmentResponseDto[]> {
+    const slot = await this.shiftSkillRepo.findByIdAndShiftId(slotId, shiftId);
+    if (!slot) throw new NotFoundException('Shift skill slot not found');
+
+    return this.getAssignmentsForSlot(slotId);
   }
 
   async assignStaff(
@@ -58,9 +69,10 @@ export class AssignmentService {
     const maybeShift = await this.shiftRepo.findById(shiftId);
     if (maybeShift.isNothing) throw new NotFoundException('Shift not found');
 
-    const maybeSlot = await this.shiftSkillRepo.findOne({
-      where: { id: slotId, shiftId },
-    });
+    const maybeSlot = await this.shiftSkillRepo.findByIdAndShiftId(
+      slotId,
+      shiftId,
+    );
     if (!maybeSlot) throw new NotFoundException('Shift skill slot not found');
 
     const maybeEmployee = await this.employeeRepo.findById(staffMemberId);
@@ -90,8 +102,17 @@ export class AssignmentService {
     );
 
     if (result.isErr) {
+      const msg = result.error.message;
+
+      if (
+        msg.includes('headcount reached') ||
+        msg.includes('overlapping assignment')
+      ) {
+        throw new ConflictException(msg);
+      }
+
       this.logger.error('Failed to create assignment', result.error);
-      throw new BadRequestException(result.error.message);
+      throw new InternalServerErrorException('Failed to create assignment');
     }
 
     const assignment = result.value;
@@ -105,7 +126,7 @@ export class AssignmentService {
       shiftId,
       staffMemberId,
       assignedByManagerId: managerId,
-      timestamp: new Date().toISOString(),
+      timestamp: this.clockService.now().toString(),
     };
 
     await this.eventRepo.append({
@@ -137,23 +158,28 @@ export class AssignmentService {
       throw new NotFoundException('Assignment not found');
     }
 
+    const slot = await this.shiftSkillRepo.findByIdAndShiftId(slotId, shiftId);
+    if (!slot) throw new NotFoundException('Shift skill slot not found');
+
+    const actualShiftId = slot.shiftId;
     const staffMemberId = assignment.staffMemberId;
 
-    await this.assignmentRepo.update(assignmentId, {
-      state: AssignmentState.CANCELLED,
-    });
+    await this.assignmentRepo.updateState(
+      assignmentId,
+      AssignmentState.CANCELLED,
+    );
 
-    const overallState = await this.shiftRepo.deriveFillState(shiftId);
-    await this.shiftRepo.updateState(shiftId, overallState);
+    const overallState = await this.shiftRepo.deriveFillState(actualShiftId);
+    await this.shiftRepo.updateState(actualShiftId, overallState);
 
     const eventPayload: AssignmentRemovedEvent = {
       assignmentId,
       shiftSkillId: slotId,
-      shiftId,
+      shiftId: actualShiftId,
       staffMemberId,
       removedByManagerId: managerId,
       reason,
-      timestamp: new Date().toISOString(),
+      timestamp: this.clockService.now().toString(),
     };
 
     await this.eventRepo.append({
@@ -173,7 +199,12 @@ export class AssignmentService {
     if (maybeShift.isNothing) throw new NotFoundException('Shift not found');
     const shift = maybeShift.value;
 
+    const slot = await this.shiftSkillRepo.findByIdAndShiftId(slotId, shiftId);
+    if (!slot) throw new NotFoundException('Shift skill slot not found');
+
     const employees = await this.employeeRepo.findAllWithUser();
+
+    const [weekStart, weekEnd] = this.getWeekBounds(shift.startTime);
 
     const eligibleStaff: EligibleStaffDto[] = [];
 
@@ -186,10 +217,17 @@ export class AssignmentService {
       );
 
       if (result.violations.length === 0) {
+        const hoursThisWeek =
+          await this.assignmentRepo.sumHoursByStaffMemberInWeek(
+            employee.id,
+            weekStart,
+            weekEnd,
+          );
+
         eligibleStaff.push({
           staffMemberId: employee.id,
           name: employee.user?.name || 'Unknown',
-          hoursThisWeek: 0,
+          hoursThisWeek,
           warnings: result.warnings.map((w) => ({
             code: w.code,
             message: w.message,
@@ -199,5 +237,21 @@ export class AssignmentService {
     }
 
     return eligibleStaff;
+  }
+
+  private getWeekBounds(date: Date): [Date, Date] {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    return [monday, sunday];
   }
 }

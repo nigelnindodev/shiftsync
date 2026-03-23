@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { of } from 'rxjs';
 import { AssignmentService } from './assignment.service';
 import { AssignmentRepository } from '../repositories';
 import { ShiftRepository } from '../repositories';
@@ -44,7 +45,7 @@ describe('AssignmentService (Integration)', () => {
   let emitMock: jest.Mock;
 
   beforeAll(async () => {
-    emitMock = jest.fn();
+    emitMock = jest.fn(() => of(undefined));
     module = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({

@@ -13,6 +13,7 @@ import {
   ShiftCreatedEvent,
   ShiftCancelledEvent,
 } from '../events/scheduling-events';
+import { ClockService } from '../../common/clock/clock.service';
 
 @Injectable()
 export class ShiftService {
@@ -22,6 +23,7 @@ export class ShiftService {
     private readonly shiftRepo: ShiftRepository,
     private readonly skillRepo: SkillRepository,
     private readonly eventRepo: DomainEventRepository,
+    private readonly clockService: ClockService,
   ) {}
 
   async createShift(
@@ -84,7 +86,7 @@ export class ShiftService {
       endTime,
       skills,
       createdByManagerId: managerId,
-      timestamp: new Date().toISOString(),
+      timestamp: this.clockService.now().toString(),
     };
 
     await this.eventRepo.append({
@@ -137,7 +139,7 @@ export class ShiftService {
     const eventPayload: ShiftCancelledEvent = {
       shiftId,
       cancelledByManagerId: managerId,
-      timestamp: new Date().toISOString(),
+      timestamp: this.clockService.now().toString(),
     };
 
     await this.eventRepo.append({

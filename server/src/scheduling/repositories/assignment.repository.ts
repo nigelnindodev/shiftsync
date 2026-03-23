@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, FindManyOptions, DeepPartial } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Assignment, AssignmentState } from '../entities/assignment.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
 import { Shift } from '../entities/shift.entity';
@@ -22,18 +22,10 @@ export class AssignmentRepository {
     return this.repo.findOneBy({ id });
   }
 
-  async find(options: FindManyOptions<Assignment>): Promise<Assignment[]> {
-    return this.repo.find(options);
-  }
-
-  async update(id: number, data: DeepPartial<Assignment>): Promise<void> {
-    await this.repo.update(id, data);
-  }
-
   async findByShiftSkillId(shiftSkillId: number): Promise<Assignment[]> {
     return this.repo.find({
       where: { shiftSkillId },
-      relations: ['shiftSkill'],
+      relations: ['staffMember', 'staffMember.user'],
     });
   }
 
@@ -227,5 +219,27 @@ export class AssignmentRepository {
       .andWhere('s.start_time >= :fromDate', { fromDate })
       .andWhere('s.start_time <= :toDate', { toDate })
       .getMany();
+  }
+
+  async sumHoursByStaffMemberInWeek(
+    staffMemberId: number,
+    fromDate: Date,
+    toDate: Date,
+  ): Promise<number> {
+    const result = await this.repo
+      .createQueryBuilder('a')
+      .innerJoin('a.shiftSkill', 'ss')
+      .innerJoin('ss.shift', 's')
+      .select(
+        'SUM(EXTRACT(EPOCH FROM (s.end_time - s.start_time)) / 3600)',
+        'totalHours',
+      )
+      .where('a.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('a.state = :state', { state: AssignmentState.ASSIGNED })
+      .andWhere('s.start_time >= :fromDate', { fromDate })
+      .andWhere('s.start_time <= :toDate', { toDate })
+      .getRawOne<{ totalHours: string }>();
+
+    return result?.totalHours ? parseFloat(result.totalHours) : 0;
   }
 }

@@ -30,16 +30,18 @@ export class DomainEventRepository {
     const event = this.repo.create(data);
     const saved = await this.repo.save(event);
 
-    try {
-      this.client.emit(data.eventType, {
+    this.client
+      .emit(data.eventType, {
         ...data.payload,
         eventId: saved.id,
+      })
+      .subscribe({
+        error: (err) =>
+          this.logger.warn(
+            `Failed to publish event ${data.eventType} to Redis`,
+            err,
+          ),
       });
-    } catch (e) {
-      // Event is persisted — Redis publish failure is non-fatal.
-      // Consumers can replay from the DB if they miss a message.
-      this.logger.warn(`Failed to publish event ${data.eventType} to Redis`, e);
-    }
 
     return saved;
   }

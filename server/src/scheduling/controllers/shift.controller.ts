@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -13,10 +14,12 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../../security/guards/jwt-auth-guard';
 import { RolesGuard } from '../../security/guards/roles.guard';
 import { Roles } from '../../security/decorators/roles.decorator';
 import { EmployeeRole } from '../../users/user.types';
+import { Employee } from '../../users/entity/employee.entity';
 import { ShiftService } from '../services/shift.service';
 import { CreateShiftDto, ShiftResponseDto } from '../dto/shift.dto';
 
@@ -31,12 +34,14 @@ export class ShiftController {
   @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
   @ApiOperation({ summary: 'Create a new shift with skill slots' })
   @ApiResponse({ status: 201, type: ShiftResponseDto })
-  async createShift(@Body() dto: CreateShiftDto) {
+  async createShift(@Body() dto: CreateShiftDto, @Req() req: Request) {
+    const employee = req['employee'] as Employee;
     return this.shiftService.createShift(
       dto.locationId,
       dto.startTime,
       dto.endTime,
       dto.skills,
+      employee.id,
     );
   }
 

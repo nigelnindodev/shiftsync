@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -14,10 +15,12 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../../security/guards/jwt-auth-guard';
 import { RolesGuard } from '../../security/guards/roles.guard';
 import { Roles } from '../../security/decorators/roles.decorator';
 import { EmployeeRole } from '../../users/user.types';
+import { Employee } from '../../users/entity/employee.entity';
 import { AssignmentService } from '../services/assignment.service';
 import {
   CreateAssignmentDto,
@@ -40,7 +43,10 @@ export class AssignmentController {
     @Param('shiftId', ParseIntPipe) shiftId: number,
     @Param('slotId', ParseIntPipe) slotId: number,
   ): Promise<AssignmentResponseDto[]> {
-    return this.assignmentService.getAssignmentsForSlot(slotId);
+    return this.assignmentService.getAssignmentsForShiftAndSlot(
+      shiftId,
+      slotId,
+    );
   }
 
   @Get('eligible-staff')
@@ -64,11 +70,14 @@ export class AssignmentController {
     @Param('shiftId', ParseIntPipe) shiftId: number,
     @Param('slotId', ParseIntPipe) slotId: number,
     @Body() dto: CreateAssignmentDto,
+    @Req() req: Request,
   ): Promise<AssignmentResponseDto> {
+    const employee = req['employee'] as Employee;
     return this.assignmentService.assignStaff(
       shiftId,
       slotId,
       dto.staffMemberId,
+      employee.id,
     );
   }
 
@@ -80,11 +89,14 @@ export class AssignmentController {
     @Param('shiftId', ParseIntPipe) shiftId: number,
     @Param('slotId', ParseIntPipe) slotId: number,
     @Param('assignmentId', ParseIntPipe) assignmentId: number,
+    @Req() req: Request,
   ): Promise<void> {
+    const employee = req['employee'] as Employee;
     return this.assignmentService.removeAssignment(
       shiftId,
       slotId,
       assignmentId,
+      employee.id,
     );
   }
 }
