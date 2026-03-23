@@ -14,6 +14,13 @@ export class ShiftSkillRepository {
     return this.repo.findOneBy({ id });
   }
 
+  async findByIdAndShiftId(
+    id: number,
+    shiftId: number,
+  ): Promise<ShiftSkill | null> {
+    return this.repo.findOne({ where: { id, shiftId } });
+  }
+
   async findByIdWithShift(id: number): Promise<ShiftSkill | null> {
     return this.repo.findOne({ where: { id }, relations: ['shift'] });
   }

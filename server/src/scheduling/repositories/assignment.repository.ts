@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Assignment, AssignmentState } from '../entities/assignment.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
+import { Shift } from '../entities/shift.entity';
 import { Result } from 'true-myth';
 
 @Injectable()
@@ -24,7 +25,7 @@ export class AssignmentRepository {
   async findByShiftSkillId(shiftSkillId: number): Promise<Assignment[]> {
     return this.repo.find({
       where: { shiftSkillId },
-      relations: ['shiftSkill'],
+      relations: ['staffMember', 'staffMember.user'],
     });
   }
 
@@ -71,12 +72,20 @@ export class AssignmentRepository {
     try {
       const shiftSkill = await queryRunner.manager.findOne(ShiftSkill, {
         where: { id: shiftSkillId },
-        relations: ['shift'],
         lock: { mode: 'pessimistic_write' },
       });
       if (!shiftSkill) {
         await queryRunner.rollbackTransaction();
         return Result.err(new Error(`ShiftSkill ${shiftSkillId} not found`));
+      }
+
+      const shift = await queryRunner.manager.findOne(Shift, {
+        where: { id: shiftSkill.shiftId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!shift) {
+        await queryRunner.rollbackTransaction();
+        return Result.err(new Error(`Shift ${shiftSkill.shiftId} not found`));
       }
 
       const assignmentCount = await queryRunner.manager.count(Assignment, {
@@ -88,9 +97,6 @@ export class AssignmentRepository {
         return Result.err(new Error(`Shift skill headcount reached`));
       }
 
-      // Acquire a staff-scoped advisory lock (using the assignments table regclass integer
-      // namespace and the staffMemberId) so that this path is safe against concurrent
-      // creation even when the overlap query below returns zero rows.
       await queryRunner.manager.query(
         `SELECT pg_advisory_xact_lock('assignments'::regclass::integer, $1)`,
         [staffMemberId],
@@ -112,7 +118,7 @@ export class AssignmentRepository {
           AND s.end_time > $3
         FOR UPDATE
         `,
-        [staffMemberId, shiftSkill.shift.endTime, shiftSkill.shift.startTime],
+        [staffMemberId, shift.endTime, shift.startTime],
       );
 
       if (conflicts.length > 0) {
@@ -213,5 +219,27 @@ export class AssignmentRepository {
       .andWhere('s.start_time >= :fromDate', { fromDate })
       .andWhere('s.start_time <= :toDate', { toDate })
       .getMany();
+  }
+
+  async sumHoursByStaffMemberInWeek(
+    staffMemberId: number,
+    fromDate: Date,
+    toDate: Date,
+  ): Promise<number> {
+    const result = await this.repo
+      .createQueryBuilder('a')
+      .innerJoin('a.shiftSkill', 'ss')
+      .innerJoin('ss.shift', 's')
+      .select(
+        'SUM(EXTRACT(EPOCH FROM (s.end_time - s.start_time)) / 3600)',
+        'totalHours',
+      )
+      .where('a.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('a.state = :state', { state: AssignmentState.ASSIGNED })
+      .andWhere('s.start_time >= :fromDate', { fromDate })
+      .andWhere('s.start_time <= :toDate', { toDate })
+      .getRawOne<{ totalHours: string }>();
+
+    return result?.totalHours ? parseFloat(result.totalHours) : 0;
   }
 }

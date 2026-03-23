@@ -31,6 +31,12 @@ export class EmployeeRepository {
     return Maybe.of(employee);
   }
 
+  async findAllWithUser(): Promise<Employee[]> {
+    return this.employeeRepository.find({
+      relations: ['user'],
+    });
+  }
+
   async createEmployee(
     input: EmployeeCreate,
   ): Promise<Result<Employee, Error>> {
