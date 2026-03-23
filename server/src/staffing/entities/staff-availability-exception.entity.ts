@@ -8,16 +8,16 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 
 @Entity('staff_availability_exceptions')
 export class StaffAvailabilityException {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'staff_member_id' })
-  staffMember?: UserProfile;
+  staffMember?: Employee;
 
   @Index()
   @Column({ name: 'staff_member_id' })

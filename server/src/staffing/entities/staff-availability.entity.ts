@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 
 export enum DayOfWeek {
   MON = 'MON',
@@ -25,10 +25,10 @@ export class StaffAvailability {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'staff_member_id' })
   @Index()
-  staffMember: UserProfile;
+  staffMember: Employee;
 
   @Column({ name: 'staff_member_id' })
   staffMemberId: number;

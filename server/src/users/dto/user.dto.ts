@@ -15,7 +15,7 @@ import {
   ValidateNested,
   IsUUID,
 } from 'class-validator';
-import { UserRole } from '../user.types';
+import { EmployeeRole } from '../user.types';
 import { ApiProperty } from '@nestjs/swagger';
 
 @ValidatorConstraint({ async: false })
@@ -57,13 +57,13 @@ export class GetOrCreateUserDto {
   name: string;
 }
 
-export class CreateUserProfileInput {
+export class CreateEmployeeInput {
   @IsUUID()
   @IsNotEmpty()
   externalId: string;
 
-  @IsEnum(UserRole)
-  role: UserRole;
+  @IsEnum(EmployeeRole)
+  role: EmployeeRole;
 
   @IsOptional()
   @IsIanaTimezone()
@@ -80,7 +80,7 @@ export class CreateUserProfileInput {
   desiredHoursNote?: string;
 }
 
-export class UpdateUserProfileDto {
+export class UpdateEmployeeDto {
   @IsOptional()
   @IsIanaTimezone()
   homeTimezone?: string;
@@ -96,13 +96,19 @@ export class UpdateUserProfileDto {
   desiredHoursNote?: string;
 }
 
-export class UserProfileDto {
+export class UpdateUserDto extends UpdateEmployeeDto {
+  @IsUUID()
+  @IsNotEmpty()
+  externalId: string;
+}
+
+export class EmployeeDto {
   @Expose()
   externalId: string;
 
   @Expose()
-  @ApiProperty({ enum: UserRole })
-  role: UserRole;
+  @ApiProperty({ enum: EmployeeRole })
+  role: EmployeeRole;
 
   @Expose()
   homeTimezone?: string;
@@ -115,7 +121,7 @@ export class UserProfileDto {
 }
 
 @Exclude()
-export class ExternalUserDetailsDto {
+export class ExternalEmployeeDetailsDto {
   @Expose()
   externalId: string;
 
@@ -128,6 +134,6 @@ export class ExternalUserDetailsDto {
   @Expose()
   @IsOptional()
   @ValidateNested()
-  @Type(() => UserProfileDto)
-  profile?: UserProfileDto | null;
+  @Type(() => EmployeeDto)
+  employee?: EmployeeDto | null;
 }

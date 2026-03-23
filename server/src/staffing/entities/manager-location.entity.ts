@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 import { Location } from './location.entity';
 
 @Entity('manager_locations')
@@ -17,9 +17,9 @@ export class ManagerLocation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'manager_id' })
-  manager?: UserProfile;
+  manager?: Employee;
 
   @Index()
   @Column({ name: 'manager_id' })

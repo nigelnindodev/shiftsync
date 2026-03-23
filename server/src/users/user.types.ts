@@ -6,7 +6,7 @@ export enum GamingPlatforms {
   MOBILE = 'mobile',
 }
 
-export enum UserRole {
+export enum EmployeeRole {
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
   STAFF = 'STAFF',

@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Assignment } from './assignment.entity';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 import { ShiftTemplate } from './shift-template.entity';
 import { ShiftTemplateSkill } from './shift-template-skill.entity';
 
@@ -39,10 +39,10 @@ export class RecurringAssignment {
   @Column({ name: 'shift_template_skill_id' })
   shiftTemplateSkillId: number;
 
-  @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'staff_member_id' })
   @Index()
-  staffMember: UserProfile;
+  staffMember: Employee;
 
   @Column({ name: 'staff_member_id' })
   staffMemberId: number;

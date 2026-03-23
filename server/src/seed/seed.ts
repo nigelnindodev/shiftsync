@@ -17,8 +17,8 @@ import {
   AssignmentState,
 } from '../scheduling/entities';
 import { User } from '../users/entity/user.entity';
-import { UserProfile } from '../users/entity/profile.entity';
-import { UserRole } from '../users/user.types';
+import { Employee } from '../users/entity/employee.entity';
+import { EmployeeRole } from '../users/user.types';
 
 async function seed() {
   console.log('Connecting to database...');
@@ -44,7 +44,7 @@ async function seed() {
   const availabilityRepo = dataSource.getRepository(StaffAvailability);
   const managerLocationRepo = dataSource.getRepository(ManagerLocation);
   const userRepo = dataSource.getRepository(User);
-  const profileRepo = dataSource.getRepository(UserProfile);
+  const employeeRepo = dataSource.getRepository(Employee);
   const shiftRepo = dataSource.getRepository(Shift);
   const shiftSkillRepo = dataSource.getRepository(ShiftSkill);
   const assignmentRepo = dataSource.getRepository(Assignment);
@@ -90,25 +90,25 @@ async function seed() {
     {
       email: 'nigel@coastaleats.com',
       name: 'Nigel (Admin)',
-      role: UserRole.ADMIN,
+      role: EmployeeRole.ADMIN,
     },
     {
       email: 'alex@coastaleats.com',
       name: 'Alex (Admin)',
-      role: UserRole.ADMIN,
+      role: EmployeeRole.ADMIN,
     },
   ];
 
   for (const admin of admins) {
     let user = await userRepo.findOne({ where: { email: admin.email } });
-    let profile: UserProfile | null = null;
+    let employee: Employee | null = null;
     if (user) {
-      profile = await profileRepo.findOne({
+      employee = await employeeRepo.findOne({
         where: { user: { email: admin.email } },
         relations: ['user'],
       });
     }
-    if (profile) {
+    if (employee) {
       console.log(`Admin "${admin.email}" already exists`);
     } else {
       if (!user) {
@@ -116,8 +116,8 @@ async function seed() {
           userRepo.create({ email: admin.email, name: admin.name }),
         );
       }
-      await profileRepo.save(
-        profileRepo.create({
+      await employeeRepo.save(
+        employeeRepo.create({
           externalId: user.externalId,
           role: admin.role,
           homeTimezone: 'America/New_York',
@@ -152,21 +152,21 @@ async function seed() {
   ];
 
   for (const mgr of managers) {
-    let profile = await profileRepo.findOne({
+    let employee = await employeeRepo.findOne({
       where: { user: { email: mgr.email } },
       relations: ['user'],
     });
-    if (!profile) {
+    if (!employee) {
       let user = await userRepo.findOne({ where: { email: mgr.email } });
       if (!user) {
         user = await userRepo.save(
           userRepo.create({ email: mgr.email, name: mgr.name }),
         );
       }
-      profile = await profileRepo.save(
-        profileRepo.create({
+      employee = await employeeRepo.save(
+        employeeRepo.create({
           externalId: user.externalId,
-          role: UserRole.MANAGER,
+          role: EmployeeRole.MANAGER,
           homeTimezone: mgr.location.timezone,
         }),
       );
@@ -175,12 +175,12 @@ async function seed() {
       console.log(`Manager "${mgr.email}" already exists`);
     }
     const existingMapping = await managerLocationRepo.findOne({
-      where: { managerId: profile.id, locationId: mgr.location.id },
+      where: { managerId: employee.id, locationId: mgr.location.id },
     });
     if (!existingMapping) {
       await managerLocationRepo.save(
         managerLocationRepo.create({
-          managerId: profile.id,
+          managerId: employee.id,
           locationId: mgr.location.id,
         }),
       );
@@ -318,28 +318,28 @@ async function seed() {
   ];
 
   const savedStaff: Array<{
-    profile: UserProfile;
+    employee: Employee;
     data: (typeof staffData)[0];
   }> = [];
   for (const staff of staffData) {
     let user = await userRepo.findOne({ where: { email: staff.email } });
-    let profile: UserProfile | null = null;
+    let employee: Employee | null = null;
     if (user) {
-      profile = await profileRepo.findOne({
+      employee = await employeeRepo.findOne({
         where: { user: { email: staff.email } },
         relations: ['user'],
       });
     }
-    if (!profile) {
+    if (!employee) {
       if (!user) {
         user = await userRepo.save(
           userRepo.create({ email: staff.email, name: staff.name }),
         );
       }
-      profile = await profileRepo.save(
-        profileRepo.create({
+      employee = await employeeRepo.save(
+        employeeRepo.create({
           externalId: user.externalId,
-          role: UserRole.STAFF,
+          role: EmployeeRole.STAFF,
           homeTimezone: staff.timezone,
           desiredHoursPerWeek: 40,
         }),
@@ -348,20 +348,20 @@ async function seed() {
     } else {
       console.log(`Staff "${staff.email}" already exists`);
     }
-    savedStaff.push({ profile, data: staff });
+    savedStaff.push({ employee: employee, data: staff });
 
     // Certifications
     for (const locIdx of staff.locationIds) {
       const existing = await locationCertRepo.findOne({
         where: {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           locationId: savedLocations[locIdx].id,
         },
       });
       if (!existing) {
         await locationCertRepo.save(
           locationCertRepo.create({
-            staffMemberId: profile.id,
+            staffMemberId: employee.id,
             locationId: savedLocations[locIdx].id,
           }),
         );
@@ -371,12 +371,15 @@ async function seed() {
     // Skills
     for (const skillIdx of staff.skillIds) {
       const existing = await staffSkillRepo.findOne({
-        where: { staffMemberId: profile.id, skillId: savedSkills[skillIdx].id },
+        where: {
+          staffMemberId: employee.id,
+          skillId: savedSkills[skillIdx].id,
+        },
       });
       if (!existing) {
         await staffSkillRepo.save(
           staffSkillRepo.create({
-            staffMemberId: profile.id,
+            staffMemberId: employee.id,
             skillId: savedSkills[skillIdx].id,
           }),
         );
@@ -390,7 +393,7 @@ async function seed() {
     ][]) {
       const existing = await availabilityRepo.findOne({
         where: {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           dayOfWeek: day as DayOfWeek,
           wallStartTime: start,
           wallEndTime: end,
@@ -399,7 +402,7 @@ async function seed() {
       if (!existing) {
         await availabilityRepo.save(
           availabilityRepo.create({
-            staffMemberId: profile.id,
+            staffMemberId: employee.id,
             dayOfWeek: day as DayOfWeek,
             wallStartTime: start,
             wallEndTime: end,
@@ -486,7 +489,7 @@ async function seed() {
         }
 
         if (dayOffset % 3 === 0) {
-          const staffMemberId = savedStaff[3].profile.id; // Switch from savedStaff[0] (John) to savedStaff[3] (David) for stability
+          const staffMemberId = savedStaff[3].employee.id; // Switch from savedStaff[0] (John) to savedStaff[3] (David) for stability
           const existingAssignment = await assignmentRepo.findOne({
             where: { shiftSkillId: bartenderSlot.id, staffMemberId },
           });
@@ -506,7 +509,7 @@ async function seed() {
         }
 
         if (dayOffset % 5 === 0) {
-          const staffMemberId = savedStaff[1].profile.id;
+          const staffMemberId = savedStaff[1].employee.id;
           const existingAssignment = await assignmentRepo.findOne({
             where: { shiftSkillId: serverSlot.id, staffMemberId },
           });
@@ -604,7 +607,7 @@ async function seed() {
     );
   }
 
-  const chaosStaffId = savedStaff[7].profile.id; // James Bartender
+  const chaosStaffId = savedStaff[7].employee.id; // James Bartender
   const existingChaosAssignment = await assignmentRepo.findOne({
     where: { shiftSkillId: chaosSlot.id, staffMemberId: chaosStaffId },
   });
@@ -675,7 +678,7 @@ async function seed() {
       );
     }
 
-    const otStaffId = savedStaff[0].profile.id;
+    const otStaffId = savedStaff[0].employee.id;
     const existingOtAssignment = await assignmentRepo.findOne({
       where: { shiftSkillId: otSlot.id, staffMemberId: otStaffId },
     });
@@ -697,9 +700,9 @@ async function seed() {
     pastSaturday = pastSaturday.subtract({ days: 1 });
   }
   const fairnessStaff = [
-    savedStaff[1].profile.id,
-    savedStaff[1].profile.id,
-    savedStaff[6].profile.id,
+    savedStaff[1].employee.id,
+    savedStaff[1].employee.id,
+    savedStaff[6].employee.id,
   ]; // Sarah, Sarah, Lisa
   for (let w = 1; w <= 3; w++) {
     const fairnessDate = pastSaturday.subtract({ weeks: w });
