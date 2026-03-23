@@ -6,17 +6,17 @@ import { UsersClientModule } from './users-client.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { UsersRepository } from './users.repository';
-import { UserProfileRepository } from './user-profile.repository';
-import { UserProfile } from './entity/profile.entity';
+import { EmployeeRepository } from './employee.repository';
+import { Employee } from './entity/employee.entity';
 import { SecurityModule } from 'src/security/security.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserProfile]),
+    TypeOrmModule.forFeature([User, Employee]),
     SecurityModule,
     UsersClientModule,
   ],
-  providers: [UsersService, UsersRepository, UserProfileRepository],
+  providers: [UsersService, UsersRepository, EmployeeRepository],
   controllers: [UsersController, UsersMicroserviceController],
 })
 export class UsersModule {}

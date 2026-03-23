@@ -11,7 +11,7 @@ import {
   ShiftRepository,
   ShiftSkillRepository,
 } from '../repositories';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 
 import {
   ConstraintCode,
@@ -37,7 +37,7 @@ export class SchedulingConstraintService {
 
   async validate(
     ctx: CreateAssignmentContext,
-    staffMember: UserProfile,
+    staffMember: Employee,
     shiftStartTime: Date,
     shiftEndTime: Date,
   ): Promise<ConstraintResult> {
@@ -125,7 +125,7 @@ export class SchedulingConstraintService {
 
   private async checkAvailability(
     ctx: CreateAssignmentContext,
-    staffMember: UserProfile,
+    staffMember: Employee,
     shiftStartTime: Date,
     shiftEndTime: Date,
   ): Promise<ConstraintCheckResult> {

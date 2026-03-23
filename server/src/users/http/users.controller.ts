@@ -7,7 +7,7 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { ExternalUserDetailsDto, UpdateUserProfileDto } from '../dto/user.dto';
+import { ExternalEmployeeDetailsDto, UpdateEmployeeDto } from '../dto/user.dto';
 import { UsersService } from '../users.service';
 import { plainToInstance } from 'class-transformer';
 import { CurrentUser } from 'src/auth/decorators/current-user-decorator';
@@ -26,7 +26,7 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'User profile details',
-    type: ExternalUserDetailsDto,
+    type: ExternalEmployeeDetailsDto,
   })
   @ApiResponse({ status: 404, description: 'User profile not found' })
   @ApiTags('user')
@@ -43,7 +43,7 @@ export class UsersController {
     }
 
     return plainToInstance(
-      ExternalUserDetailsDto,
+      ExternalEmployeeDetailsDto,
       maybeUserProfileDetails.value,
       {
         excludeExtraneousValues: true,
@@ -58,7 +58,7 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'Updated user profile',
-    type: ExternalUserDetailsDto,
+    type: ExternalEmployeeDetailsDto,
   })
   @ApiResponse({
     status: 400,
@@ -68,7 +68,7 @@ export class UsersController {
   @ApiTags('user')
   async updateUser(
     @CurrentUser('sub') externalId: string,
-    @Body() updateUserDto: UpdateUserProfileDto,
+    @Body() updateUserDto: UpdateEmployeeDto,
   ) {
     this.logger.log('Received request to update user profile', { externalId });
 
@@ -84,7 +84,7 @@ export class UsersController {
     }
 
     // Clean this up, we've created a new UserProfile entity
-    return plainToInstance(ExternalUserDetailsDto, maybeUser.value, {
+    return plainToInstance(ExternalEmployeeDetailsDto, maybeUser.value, {
       excludeExtraneousValues: true,
       enableImplicitConversion: true,
     });

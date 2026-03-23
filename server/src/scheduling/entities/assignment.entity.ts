@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { RecurringAssignment } from './recurring-assignment.entity';
 import { ShiftSkill } from './shift-skill.entity';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 
 export enum AssignmentState {
   ASSIGNED = 'ASSIGNED',
@@ -49,9 +49,9 @@ export class Assignment {
   @Column({ name: 'recurring_assignment_id', nullable: true })
   recurringAssignmentId?: number;
 
-  @ManyToOne(() => UserProfile, { nullable: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'staff_member_id' })
-  staffMember: UserProfile;
+  staffMember: Employee;
 
   @Index()
   @Column({ name: 'staff_member_id' })

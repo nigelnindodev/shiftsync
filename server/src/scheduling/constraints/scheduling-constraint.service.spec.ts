@@ -16,7 +16,7 @@ import {
 import { clearDatabase } from '../../../test/db-utils';
 
 import { User } from '../../users/entity/user.entity';
-import { UserProfile } from '../../users/entity/profile.entity';
+import { Employee } from '../../users/entity/employee.entity';
 import { Token } from '../../auth/entity/tokens.entity';
 import { Location } from '../../staffing/entities/location.entity';
 import { ManagerLocation } from '../../staffing/entities/manager-location.entity';
@@ -32,7 +32,7 @@ import { StaffAvailabilityException } from '../../staffing/entities/staff-availa
 import { Shift, ShiftState } from '../entities/shift.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
 import { Assignment, AssignmentState } from '../entities/assignment.entity';
-import { UserRole } from '../../users/user.types';
+import { EmployeeRole } from '../../users/user.types';
 
 describe('SchedulingConstraintService (Integration)', () => {
   let module: TestingModule;
@@ -54,7 +54,7 @@ describe('SchedulingConstraintService (Integration)', () => {
         }),
         TypeOrmModule.forFeature([
           User,
-          UserProfile,
+          Employee,
           Token,
           Location,
           ManagerLocation,
@@ -102,9 +102,9 @@ describe('SchedulingConstraintService (Integration)', () => {
     const user = await dataSource
       .getRepository(User)
       .save({ email: 'test@example.com', name: 'Test' });
-    const profile = await dataSource.getRepository(UserProfile).save({
+    const employee = await dataSource.getRepository(Employee).save({
       externalId: user.externalId,
-      role: UserRole.STAFF,
+      role: EmployeeRole.STAFF,
       homeTimezone: 'UTC',
       desiredHoursPerWeek: 40,
     });
@@ -112,7 +112,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       .getRepository(Location)
       .save({ name: 'Loc', timezone: 'UTC', brand: 'Brand' });
     const skill = await dataSource.getRepository(Skill).save({ name: 'Skill' });
-    return { user, profile, location, skill };
+    return { user, employee, location, skill };
   }
 
   async function createShift(
@@ -139,7 +139,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('skill match', () => {
     it('returns VIOLATION when staff lacks required skill', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -149,11 +149,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -164,7 +164,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('passes when staff has the required skill', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -174,15 +174,15 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       await dataSource
         .getRepository(StaffSkill)
-        .save({ staffMemberId: profile.id, skillId: skill.id });
+        .save({ staffMemberId: employee.id, skillId: skill.id });
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -195,7 +195,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('location certification', () => {
     it('returns VIOLATION when staff is not certified', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -205,11 +205,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -220,7 +220,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('passes when staff is certified', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -230,15 +230,15 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       await dataSource
         .getRepository(LocationCertification)
-        .save({ staffMemberId: profile.id, locationId: location.id });
+        .save({ staffMemberId: employee.id, locationId: location.id });
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -251,7 +251,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('availability — blocking exception', () => {
     it('returns VIOLATION when staff has blocked the date', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -260,18 +260,18 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(StaffAvailabilityException).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         date: '2026-03-24',
         isAvailable: false,
       });
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -284,7 +284,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('availability — override window', () => {
     it('returns VIOLATION when shift falls outside override window', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -293,7 +293,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(StaffAvailabilityException).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         date: '2026-03-24',
         isAvailable: true,
         wallStartTime: '20:00:00',
@@ -302,11 +302,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -319,7 +319,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('passes when shift falls within override window', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -328,7 +328,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(StaffAvailabilityException).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         date: '2026-03-24',
         isAvailable: true,
         wallStartTime: '08:00:00',
@@ -337,11 +337,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -356,7 +356,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('availability — recurring pattern', () => {
     it('returns VIOLATION when no window covers the shift', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       // 2026-03-24 is a Tuesday
       const { shift, shiftSkill } = await createShift(
         location.id,
@@ -366,7 +366,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(StaffAvailability).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         dayOfWeek: DayOfWeek.MON, // Lacks Tuesday
         wallStartTime: '08:00:00',
         wallEndTime: '20:00:00',
@@ -374,11 +374,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -391,7 +391,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('passes when a recurring window fully covers the shift', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shift, shiftSkill } = await createShift(
         location.id,
         skill.id,
@@ -400,7 +400,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(StaffAvailability).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         dayOfWeek: DayOfWeek.TUE,
         wallStartTime: '08:00:00',
         wallEndTime: '20:00:00',
@@ -408,11 +408,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );
@@ -427,7 +427,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('no overlap', () => {
     it('returns VIOLATION when overlapping assignment exists', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shiftSkill: shiftSkillOld } = await createShift(
         location.id,
         skill.id,
@@ -436,7 +436,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(Assignment).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         shiftSkillId: shiftSkillOld.id,
         state: AssignmentState.ASSIGNED,
       });
@@ -451,11 +451,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -468,7 +468,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('rest gap', () => {
     it('returns VIOLATION when prior shift ends within 10 hours', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shiftSkill: shiftSkillOld } = await createShift(
         location.id,
         skill.id,
@@ -477,7 +477,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(Assignment).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         shiftSkillId: shiftSkillOld.id,
         state: AssignmentState.ASSIGNED,
       });
@@ -492,11 +492,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -507,7 +507,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('passes when rest gap is sufficient', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shiftSkill: shiftSkillOld } = await createShift(
         location.id,
         skill.id,
@@ -516,7 +516,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       );
 
       await dataSource.getRepository(Assignment).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         shiftSkillId: shiftSkillOld.id,
         state: AssignmentState.ASSIGNED,
       });
@@ -531,11 +531,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -548,7 +548,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('daily hours', () => {
     it('returns VIOLATION when daily hours exceed 12', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shiftSkill: shiftSkillOld } = await createShift(
         location.id,
         skill.id,
@@ -557,7 +557,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       ); // 8 hrs
 
       await dataSource.getRepository(Assignment).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         shiftSkillId: shiftSkillOld.id,
         state: AssignmentState.ASSIGNED,
       });
@@ -572,11 +572,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -587,7 +587,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('returns WARNING when daily hours exceed 8 but not 12', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
       const { shiftSkill: shiftSkillOld } = await createShift(
         location.id,
         skill.id,
@@ -596,7 +596,7 @@ describe('SchedulingConstraintService (Integration)', () => {
       ); // 4 hrs
 
       await dataSource.getRepository(Assignment).save({
-        staffMemberId: profile.id,
+        staffMemberId: employee.id,
         shiftSkillId: shiftSkillOld.id,
         state: AssignmentState.ASSIGNED,
       });
@@ -611,11 +611,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -628,7 +628,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('weekly hours', () => {
     it('returns VIOLATION when weekly hours exceed 40', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
 
       // Assign 5 8-hour shifts taking Monday - Friday
       for (let i = 0; i < 5; i++) {
@@ -640,7 +640,7 @@ describe('SchedulingConstraintService (Integration)', () => {
           new Date(`2026-03-${d}T08:00:00Z`),
         );
         await dataSource.getRepository(Assignment).save({
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           state: AssignmentState.ASSIGNED,
         });
@@ -656,11 +656,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -671,7 +671,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('returns WARNING when weekly hours approach 40 (35+)', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
 
       // Assign 4 8-hour shifts = 32 hours
       for (let i = 0; i < 4; i++) {
@@ -683,7 +683,7 @@ describe('SchedulingConstraintService (Integration)', () => {
           new Date(`2026-03-${d}T08:00:00Z`),
         );
         await dataSource.getRepository(Assignment).save({
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           state: AssignmentState.ASSIGNED,
         });
@@ -699,11 +699,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -718,7 +718,7 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('consecutive days', () => {
     it('returns VIOLATION on 7th consecutive day', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
 
       // Assign 6 2-hour shifts taking Monday - Saturday (To keep hours under 40)
       for (let i = 0; i < 6; i++) {
@@ -730,7 +730,7 @@ describe('SchedulingConstraintService (Integration)', () => {
           new Date(`2026-03-${d}T02:00:00Z`),
         );
         await dataSource.getRepository(Assignment).save({
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           state: AssignmentState.ASSIGNED,
         });
@@ -746,11 +746,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -761,7 +761,7 @@ describe('SchedulingConstraintService (Integration)', () => {
     });
 
     it('returns WARNING on 6th consecutive day', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
 
       // Assign 5 2-hour shifts taking Monday - Friday
       for (let i = 0; i < 5; i++) {
@@ -773,7 +773,7 @@ describe('SchedulingConstraintService (Integration)', () => {
           new Date(`2026-03-${d}T02:00:00Z`),
         );
         await dataSource.getRepository(Assignment).save({
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           state: AssignmentState.ASSIGNED,
         });
@@ -789,11 +789,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkillNew.id,
           shiftId: shiftNew.id,
         },
-        profile,
+        employee,
         shiftNew.startTime,
         shiftNew.endTime,
       );
@@ -806,18 +806,18 @@ describe('SchedulingConstraintService (Integration)', () => {
 
   describe('full valid assignment', () => {
     it('returns valid=true with no violations', async () => {
-      const { profile, location, skill } = await createBaseContext();
+      const { employee, location, skill } = await createBaseContext();
 
       // Fully certify User
       await dataSource
         .getRepository(StaffSkill)
-        .save({ staffMemberId: profile.id, skillId: skill.id });
+        .save({ staffMemberId: employee.id, skillId: skill.id });
       await dataSource
         .getRepository(LocationCertification)
-        .save({ staffMemberId: profile.id, locationId: location.id });
+        .save({ staffMemberId: employee.id, locationId: location.id });
       await dataSource.getRepository(StaffAvailability).save({
-        staffMemberId: profile.id,
-        dayOfWeek: DayOfWeek.TUE, // Tuesday
+        staffMemberId: employee.id,
+        dayOfWeek: DayOfWeek.TUE,
         wallStartTime: '08:00:00',
         wallEndTime: '20:00:00',
       });
@@ -831,11 +831,11 @@ describe('SchedulingConstraintService (Integration)', () => {
 
       const result = await service.validate(
         {
-          staffMemberId: profile.id,
+          staffMemberId: employee.id,
           shiftSkillId: shiftSkill.id,
           shiftId: shift.id,
         },
-        profile,
+        employee,
         shift.startTime,
         shift.endTime,
       );

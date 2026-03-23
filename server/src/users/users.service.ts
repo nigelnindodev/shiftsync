@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UsersRepository } from './users.repository';
-import { ExternalUserDetailsDto, GetOrCreateUserDto } from './dto/user.dto';
+import { ExternalEmployeeDetailsDto, GetOrCreateUserDto } from './dto/user.dto';
 import { User } from './entity/user.entity';
 import { Maybe, Result } from 'true-myth';
-import { UserProfileRepository } from './user-profile.repository';
-import { UserProfile } from './entity/profile.entity';
-import { UserRole } from './user.types';
+import { EmployeeRepository } from './employee.repository';
+import { Employee } from './entity/employee.entity';
+import { EmployeeRole } from './user.types';
 import { AppConfigService } from '../config';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class UsersService {
 
   constructor(
     private readonly userRepository: UsersRepository,
-    private readonly userProfileRepository: UserProfileRepository,
+    private readonly userProfileRepository: EmployeeRepository,
     private readonly configService: AppConfigService,
   ) {}
 
@@ -34,7 +34,7 @@ export class UsersService {
 
   async getUserProfile(
     externalId: string,
-  ): Promise<Maybe<ExternalUserDetailsDto>> {
+  ): Promise<Maybe<ExternalEmployeeDetailsDto>> {
     const maybeUserProfileWithUser =
       await this.userProfileRepository.findByExternalIdWithUser(externalId);
     return maybeUserProfileWithUser.map((userProfileWithUser) => {
@@ -75,14 +75,14 @@ export class UsersService {
   }
 
   async updateUser(
-    data: Partial<Omit<UserProfile, 'id' | 'externalId'>> &
-      Pick<UserProfile, 'externalId'>,
-  ): Promise<Maybe<ExternalUserDetailsDto>> {
+    data: Partial<Omit<Employee, 'id' | 'externalId'>> &
+      Pick<Employee, 'externalId'>,
+  ): Promise<Maybe<ExternalEmployeeDetailsDto>> {
     this.logger.log('Processing update details request for user', {
       externalId: data.externalId,
     });
 
-    const result = await this.userProfileRepository.updateUserProfile(data);
+    const result = await this.userProfileRepository.updateEmployee(data);
 
     if (result.isErr) {
       this.logger.error(`Update for user profile failed`, {
@@ -123,7 +123,7 @@ export class UsersService {
 
   private async getOrCreateUserProfile(
     externalId: string,
-  ): Promise<Result<UserProfile, Error>> {
+  ): Promise<Result<Employee, Error>> {
     const maybeUserProfile =
       await this.userProfileRepository.findByExternalId(externalId);
     return await maybeUserProfile.match({
@@ -132,9 +132,9 @@ export class UsersService {
         const defaultTimezone =
           this.configService.get<string>('DEFAULT_TIMEZONE') ?? 'UTC';
         const createUserProfileResult =
-          await this.userProfileRepository.createUserProfile({
+          await this.userProfileRepository.createEmployee({
             externalId,
-            role: UserRole.STAFF,
+            role: EmployeeRole.STAFF,
             homeTimezone: defaultTimezone,
           });
         return createUserProfileResult.match({

@@ -10,15 +10,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-import { UserRole } from '../user.types';
+import { EmployeeRole } from '../user.types';
 import { StaffSkill } from '../../staffing/entities/staff-skill.entity';
 
-@Entity('user_profile')
+@Entity('employee')
 @Check(
   'desired_hours_positive',
   '"desired_hours_per_week" IS NULL OR "desired_hours_per_week" >= 0',
 )
-export class UserProfile {
+export class Employee {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -31,10 +31,10 @@ export class UserProfile {
 
   @Column({
     type: 'enum',
-    enum: UserRole,
-    default: UserRole.STAFF,
+    enum: EmployeeRole,
+    default: EmployeeRole.STAFF,
   })
-  role: UserRole;
+  role: EmployeeRole;
 
   @Column({ name: 'home_timezone' })
   homeTimezone: string;
