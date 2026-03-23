@@ -5,6 +5,8 @@ import { User } from './entity/user.entity';
 import { Maybe, Result } from 'true-myth';
 import { UserProfileRepository } from './user-profile.repository';
 import { UserProfile } from './entity/profile.entity';
+import { UserRole } from './user.types';
+import { AppConfigService } from '../config';
 
 @Injectable()
 export class UsersService {
@@ -13,6 +15,7 @@ export class UsersService {
   constructor(
     private readonly userRepository: UsersRepository,
     private readonly userProfileRepository: UserProfileRepository,
+    private readonly configService: AppConfigService,
   ) {}
 
   async createUser(data: GetOrCreateUserDto): Promise<Maybe<User>> {
@@ -126,8 +129,14 @@ export class UsersService {
     return await maybeUserProfile.match({
       Just: (userProfile) => Promise.resolve(Result.ok(userProfile)),
       Nothing: async () => {
+        const defaultTimezone =
+          this.configService.get<string>('DEFAULT_TIMEZONE') ?? 'UTC';
         const createUserProfileResult =
-          await this.userProfileRepository.createUserProfile({ externalId });
+          await this.userProfileRepository.createUserProfile({
+            externalId,
+            role: UserRole.STAFF,
+            homeTimezone: defaultTimezone,
+          });
         return createUserProfileResult.match({
           Ok: (userProfile) => Promise.resolve(Result.ok(userProfile)),
           Err: (e) => {

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserProfile } from './entity/profile.entity';
 import { Repository } from 'typeorm';
 import { Maybe, Result } from 'true-myth';
+import { CreateUserProfileInput } from './dto/user.dto';
 
 @Injectable()
 export class UserProfileRepository {
@@ -33,28 +34,31 @@ export class UserProfileRepository {
   }
 
   async createUserProfile(
-    userProfileData: Omit<
-      UserProfile,
-      'id' | 'createdAt' | 'updatedAt' | 'user'
-    >,
+    input: CreateUserProfileInput,
   ): Promise<Result<UserProfile, Error>> {
     this.logger.log(
-      `Attempting to create user profile for external id ${userProfileData.externalId}`,
+      `Attempting to create user profile for external id ${input.externalId}`,
     );
     try {
-      const userProfile = this.userProfileRepository.create(userProfileData);
+      const userProfile = this.userProfileRepository.create({
+        externalId: input.externalId,
+        role: input.role,
+        homeTimezone: input.homeTimezone,
+        desiredHoursPerWeek: input.desiredHoursPerWeek,
+        desiredHoursNote: input.desiredHoursNote,
+      });
       const savedUserProfile =
         await this.userProfileRepository.save(userProfile);
       return Result.ok(savedUserProfile);
     } catch (e) {
       this.logger.error(
-        `Failed to create user profile with external id ${userProfileData.externalId}`,
+        `Failed to create user profile with external id ${input.externalId}`,
       );
       return Result.err(
         e instanceof Error
           ? e
           : new Error(
-              `Failed to create user profile for external id ${userProfileData.externalId}`,
+              `Failed to create user profile for external id ${input.externalId}`,
             ),
       );
     }
