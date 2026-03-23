@@ -15,7 +15,7 @@ export class AssignmentRepository {
     @InjectRepository(ShiftSkill)
     private readonly shiftSkillRepo: Repository<ShiftSkill>,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   async findById(id: number): Promise<Assignment | null> {
     return this.repo.findOneBy({ id });
@@ -96,7 +96,7 @@ export class AssignmentRepository {
         [staffMemberId],
       );
 
-      const conflicts = await queryRunner.manager.query(
+      const conflicts: { id: number }[] = await queryRunner.manager.query(
         `
         SELECT assignments.id
         FROM assignments
