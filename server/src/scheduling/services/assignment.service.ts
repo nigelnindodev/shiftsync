@@ -22,6 +22,7 @@ import {
 import { AssignmentState } from '../entities/assignment.entity';
 import { AssignmentResponseDto, EligibleStaffDto } from '../dto/assignment.dto';
 import { ClockService } from '../../common/clock/clock.service';
+import { Temporal } from '@js-temporal/polyfill';
 
 @Injectable()
 export class AssignmentService {
@@ -164,10 +165,14 @@ export class AssignmentService {
     const actualShiftId = slot.shiftId;
     const staffMemberId = assignment.staffMemberId;
 
-    await this.assignmentRepo.updateState(
+    const cancelResult = await this.assignmentRepo.updateState(
       assignmentId,
       AssignmentState.CANCELLED,
     );
+    if (cancelResult.isErr) {
+      this.logger.error('Failed to cancel assignment', cancelResult.error);
+      throw new InternalServerErrorException('Failed to cancel assignment');
+    }
 
     const overallState = await this.shiftRepo.deriveFillState(actualShiftId);
     await this.shiftRepo.updateState(actualShiftId, overallState);
@@ -240,18 +245,20 @@ export class AssignmentService {
   }
 
   private getWeekBounds(date: Date): [Date, Date] {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const instant = Temporal.Instant.from(date.toISOString());
+    const zdt = instant.toZonedDateTimeISO('UTC');
+    const dayOfWeek = zdt.dayOfWeek; // 1=Monday, ..., 7=Sunday
 
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
+    const monday = zdt
+      .subtract({ days: dayOfWeek - 1 })
+      .withPlainTime({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+    const sunday = monday
+      .add({ days: 6 })
+      .withPlainTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
 
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-
-    return [monday, sunday];
+    return [
+      new Date(monday.toInstant().toString()),
+      new Date(sunday.toInstant().toString()),
+    ];
   }
 }
