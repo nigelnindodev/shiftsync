@@ -96,6 +96,12 @@ export class UpdateEmployeeDto {
   desiredHoursNote?: string;
 }
 
+export class UpdateUserDto extends UpdateEmployeeDto {
+  @IsUUID()
+  @IsNotEmpty()
+  externalId: string;
+}
+
 export class EmployeeDto {
   @Expose()
   externalId: string;

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Employee } from './entity/employee.entity';
 import { Repository } from 'typeorm';
 import { Maybe, Result } from 'true-myth';
-import { CreateEmployeeInput } from './dto/user.dto';
+import { EmployeeCreate, EmployeeUpdate } from './employee.types';
 
 @Injectable()
 export class EmployeeRepository {
@@ -32,7 +32,7 @@ export class EmployeeRepository {
   }
 
   async createEmployee(
-    input: CreateEmployeeInput,
+    input: EmployeeCreate,
   ): Promise<Result<Employee, Error>> {
     this.logger.log(
       `Attempting to create employee for external id ${input.externalId}`,
@@ -62,8 +62,7 @@ export class EmployeeRepository {
   }
 
   async updateEmployee(
-    employeeData: Partial<Omit<Employee, 'id' | 'externalId'>> &
-      Pick<Employee, 'externalId'>,
+    employeeData: EmployeeUpdate,
   ): Promise<Result<Employee, Error>> {
     this.logger.log(
       `Attempting to update employee for external id ${employeeData.externalId}`,

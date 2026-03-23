@@ -1,12 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UsersRepository } from './users.repository';
-import { ExternalEmployeeDetailsDto, GetOrCreateUserDto } from './dto/user.dto';
+import {
+  ExternalEmployeeDetailsDto,
+  GetOrCreateUserDto,
+  UpdateUserDto,
+} from './dto/user.dto';
 import { User } from './entity/user.entity';
 import { Maybe, Result } from 'true-myth';
 import { EmployeeRepository } from './employee.repository';
 import { Employee } from './entity/employee.entity';
 import { EmployeeRole } from './user.types';
 import { AppConfigService } from '../config';
+import { EmployeeUpdate } from './employee.types';
 
 @Injectable()
 export class UsersService {
@@ -14,7 +19,7 @@ export class UsersService {
 
   constructor(
     private readonly userRepository: UsersRepository,
-    private readonly userProfileRepository: EmployeeRepository,
+    private readonly employeeRepository: EmployeeRepository,
     private readonly configService: AppConfigService,
   ) {}
 
@@ -32,15 +37,15 @@ export class UsersService {
     return Maybe.of(result.value);
   }
 
-  async getUserProfile(
+  async getEmployee(
     externalId: string,
   ): Promise<Maybe<ExternalEmployeeDetailsDto>> {
-    const maybeUserProfileWithUser =
-      await this.userProfileRepository.findByExternalIdWithUser(externalId);
-    return maybeUserProfileWithUser.map((userProfileWithUser) => {
+    const maybeEmployeeWithUser =
+      await this.employeeRepository.findByExternalIdWithUser(externalId);
+    return maybeEmployeeWithUser.map((employeeWithUser) => {
       return {
-        ...userProfileWithUser.user,
-        profile: userProfileWithUser,
+        ...employeeWithUser.user,
+        employee: employeeWithUser,
       };
     });
   }
@@ -56,17 +61,14 @@ export class UsersService {
 
     return await maybeUser.match({
       Just: async (user) => {
-        await this.ensureUserProfile(user.externalId, 'existing user');
+        await this.ensureEmployee(user.externalId, 'existing user');
         return Maybe.of(user);
       },
       Nothing: async () => {
         const maybeNewUser = await this.createUser({ email, name });
 
         if (maybeNewUser.isJust) {
-          await this.ensureUserProfile(
-            maybeNewUser.value.externalId,
-            'new user',
-          );
+          await this.ensureEmployee(maybeNewUser.value.externalId, 'new user');
         }
 
         return maybeNewUser;
@@ -75,17 +77,23 @@ export class UsersService {
   }
 
   async updateUser(
-    data: Partial<Omit<Employee, 'id' | 'externalId'>> &
-      Pick<Employee, 'externalId'>,
+    data: UpdateUserDto,
   ): Promise<Maybe<ExternalEmployeeDetailsDto>> {
     this.logger.log('Processing update details request for user', {
       externalId: data.externalId,
     });
 
-    const result = await this.userProfileRepository.updateEmployee(data);
+    const repoInput: EmployeeUpdate = {
+      externalId: data.externalId,
+      homeTimezone: data.homeTimezone,
+      desiredHoursPerWeek: data.desiredHoursPerWeek,
+      desiredHoursNote: data.desiredHoursNote,
+    };
+
+    const result = await this.employeeRepository.updateEmployee(repoInput);
 
     if (result.isErr) {
-      this.logger.error(`Update for user profile failed`, {
+      this.logger.error(`Update for user failed`, {
         externalId: data.externalId,
         error: result.error,
       });
@@ -93,54 +101,52 @@ export class UsersService {
     }
 
     // We need additional query to merge with user entity here
-    const maybeUserProfileWithUser =
-      await this.userProfileRepository.findByExternalIdWithUser(
-        data.externalId,
-      );
-    return maybeUserProfileWithUser.map((userProfileWithUser) => {
+    const maybeEmployeeWithUser =
+      await this.employeeRepository.findByExternalIdWithUser(data.externalId);
+    return maybeEmployeeWithUser.map((employeeWithUser) => {
       return {
-        ...userProfileWithUser.user,
-        profile: userProfileWithUser,
+        ...employeeWithUser.user,
+        employee: employeeWithUser,
       };
     });
   }
 
-  private async ensureUserProfile(
+  private async ensureEmployee(
     externalId: string,
     context: string,
   ): Promise<void> {
-    const profileResult = await this.getOrCreateUserProfile(externalId);
+    const employeeResult = await this.getOrCreateEmployee(externalId);
 
-    profileResult.match({
+    employeeResult.match({
       Ok: () => {},
       Err: () => {
-        this.logger.warn(`Failed to create user profile for ${context}`, {
+        this.logger.warn(`Failed to create employee for ${context}`, {
           externalId,
         });
       },
     });
   }
 
-  private async getOrCreateUserProfile(
+  private async getOrCreateEmployee(
     externalId: string,
   ): Promise<Result<Employee, Error>> {
-    const maybeUserProfile =
-      await this.userProfileRepository.findByExternalId(externalId);
-    return await maybeUserProfile.match({
-      Just: (userProfile) => Promise.resolve(Result.ok(userProfile)),
+    const maybeEmployee =
+      await this.employeeRepository.findByExternalId(externalId);
+    return await maybeEmployee.match({
+      Just: (employee) => Promise.resolve(Result.ok(employee)),
       Nothing: async () => {
         const defaultTimezone =
           this.configService.get<string>('DEFAULT_TIMEZONE') ?? 'UTC';
-        const createUserProfileResult =
-          await this.userProfileRepository.createEmployee({
+        const createEmployeeResult =
+          await this.employeeRepository.createEmployee({
             externalId,
             role: EmployeeRole.STAFF,
             homeTimezone: defaultTimezone,
           });
-        return createUserProfileResult.match({
-          Ok: (userProfile) => Promise.resolve(Result.ok(userProfile)),
+        return createEmployeeResult.match({
+          Ok: (employee) => Promise.resolve(Result.ok(employee)),
           Err: (e) => {
-            this.logger.error('Failed to create user profile', { externalId });
+            this.logger.error('Failed to create employee', { externalId });
             return Promise.resolve(Result.err(e));
           },
         });

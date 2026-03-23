@@ -34,7 +34,7 @@ export class UsersController {
     this.logger.log('Received request to fetch user profile', { externalId });
 
     const maybeUserProfileDetails =
-      await this.userService.getUserProfile(externalId);
+      await this.userService.getEmployee(externalId);
 
     if (maybeUserProfileDetails.isNothing) {
       const errorMessage = `User details with external id ${externalId} not found`;
