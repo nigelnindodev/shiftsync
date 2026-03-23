@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import { SchedulingConstraintService } from './scheduling-constraint.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClockService } from '../../common/clock/clock.service';
 import {
   StaffSkillRepository,
@@ -494,6 +495,50 @@ describe('SchedulingConstraintService', () => {
       });
       expect(result.valid).toBe(true);
       expect(result.violations).toHaveLength(0);
+    });
+  });
+
+  describe('Real DB Integration Proof Of Concept', () => {
+    let module: TestingModule;
+    let dataSource: DataSource;
+
+    beforeAll(async () => {
+      module = await Test.createTestingModule({
+        imports: [
+          TypeOrmModule.forRoot({
+            type: 'postgres',
+            host: process.env.PG_HOST,
+            port: parseInt(process.env.PG_PORT || '5432', 10),
+            username: process.env.PG_USERNAME,
+            password: process.env.PG_PASSWORD,
+            database: process.env.PG_DATABASE,
+            entities: [__dirname + '/../../**/*.entity.{ts,js}'],
+            synchronize: true,
+          }),
+        ],
+        providers: [
+          SchedulingConstraintService,
+          { provide: ClockService, useValue: { now: () => new Date() } },
+          { provide: StaffSkillRepository, useValue: { hasSkill: jest.fn().mockResolvedValue(true) } },
+          { provide: LocationCertificationRepository, useValue: { isCertified: jest.fn().mockResolvedValue(true) } },
+          { provide: StaffAvailabilityRepository, useValue: { findByStaffMember: jest.fn().mockResolvedValue([]), findExceptionsForDate: jest.fn().mockResolvedValue([]) } },
+          { provide: AssignmentRepository, useValue: { findOverlappingAssignments: jest.fn().mockResolvedValue([]), findByStaffMemberAndDateRange: jest.fn().mockResolvedValue([]) } },
+          { provide: ShiftRepository, useValue: { findById: jest.fn().mockResolvedValue({ isJust: true, value: defaultShift }) } },
+          { provide: ShiftSkillRepository, useValue: { findById: jest.fn().mockResolvedValue({ id: 5, skillId: 1 }), findByIdWithShift: jest.fn().mockResolvedValue(null) } },
+        ],
+      }).compile();
+
+      dataSource = module.get<DataSource>(DataSource);
+    });
+
+    afterAll(async () => {
+      if (module) await module.close();
+    });
+
+    it('should connect to the test database successfully', async () => {
+      expect(dataSource.isInitialized).toBe(true);
+      const [{ ok }] = await dataSource.query(`SELECT 1 AS ok`);
+      expect(ok).toBe(1);
     });
   });
 });

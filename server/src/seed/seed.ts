@@ -28,7 +28,7 @@ async function seed() {
     port: parseInt(process.env.PG_PORT ?? '5432', 10),
     username: process.env.PG_USERNAME ?? 'changeuser',
     password: process.env.PG_PASSWORD ?? 'changepass',
-    database: process.env.PG_DATABASE ?? 'change_dbname',
+    database: process.env.PG_DATABASE ?? 'change_dbname_shiftsync',
     entities: [__dirname + '/../**/*.entity.ts'],
     synchronize: true,
     logging: true,
@@ -301,6 +301,20 @@ async function seed() {
         [DayOfWeek.SUN]: ['14:00', '22:00'],
       },
     },
+    {
+      email: 'alexandra@coastaleats.com',
+      name: 'Alexandra Server',
+      timezone: 'America/New_York',
+      locationIds: [0, 2],
+      skillIds: [2],
+      availability: {
+        [DayOfWeek.MON]: ['09:00', '17:00'],
+        [DayOfWeek.TUE]: ['09:00', '17:00'],
+        [DayOfWeek.WED]: ['09:00', '17:00'],
+        [DayOfWeek.THU]: ['09:00', '17:00'],
+        [DayOfWeek.FRI]: ['09:00', '17:00'],
+      },
+    },
   ];
 
   const savedStaff: Array<{
@@ -395,90 +409,247 @@ async function seed() {
     }
   }
 
-  // --- Sample Shifts (2 weeks ahead) ---
+  // --- Sample Shifts (2 weeks ahead across all locations) ---
   const now = Temporal.Now.instant();
+
+  for (const location of savedLocations) {
+    const locTimezone = location.timezone;
+
+    for (let dayOffset = 1; dayOffset <= 14; dayOffset++) {
+      const baseDate = now
+        .toZonedDateTimeISO(locTimezone)
+        .add({ days: dayOffset });
+
+      const shiftDate = new Date(
+        baseDate
+          .with({ hour: 10, minute: 0, second: 0, nanosecond: 0 })
+          .toInstant()
+          .toString(),
+      );
+      const shiftEnd = new Date(
+        baseDate
+          .with({ hour: 18, minute: 0, second: 0, nanosecond: 0 })
+          .toInstant()
+          .toString(),
+      );
+
+      const existingShift = await shiftRepo.findOne({
+        where: {
+          locationId: location.id,
+          startTime: shiftDate,
+          endTime: shiftEnd,
+        },
+      });
+
+      if (!existingShift) {
+        const shift = await shiftRepo.save(
+          shiftRepo.create({
+            locationId: location.id,
+            startTime: shiftDate,
+            endTime: shiftEnd,
+            state: ShiftState.OPEN,
+          }),
+        );
+
+        // Only add bartender and server skills to Downtown to keep noise low
+        if (location.name === 'Downtown') {
+          const bartenderSlot = await shiftSkillRepo.save(
+            shiftSkillRepo.create({
+              shiftId: shift.id,
+              skillId: savedSkills[0].id,
+              headcount: 1,
+            }),
+          );
+
+          const serverSlot = await shiftSkillRepo.save(
+            shiftSkillRepo.create({
+              shiftId: shift.id,
+              skillId: savedSkills[2].id,
+              headcount: 2,
+            }),
+          );
+
+          if (dayOffset % 3 === 0) {
+            await assignmentRepo.save(
+              assignmentRepo.create({
+                shiftSkillId: bartenderSlot.id,
+                staffMemberId: savedStaff[0].profile.id,
+                state: AssignmentState.ASSIGNED,
+              }),
+            );
+            await shiftRepo.update(shift.id, {
+              state: ShiftState.PARTIALLY_FILLED,
+            });
+          }
+
+          if (dayOffset % 5 === 0) {
+            await assignmentRepo.save(
+              assignmentRepo.create({
+                shiftSkillId: serverSlot.id,
+                staffMemberId: savedStaff[1].profile.id,
+                state: AssignmentState.ASSIGNED,
+              }),
+            );
+            await shiftRepo.update(shift.id, {
+              state: ShiftState.PARTIALLY_FILLED,
+            });
+
+            // The Regret Swap: Create pending swap for Sarah on day 10
+            if (dayOffset === 10) {
+              await assignmentRepo.update(
+                {
+                  staffMemberId: savedStaff[1].profile.id,
+                  shiftSkillId: serverSlot.id,
+                },
+                { state: AssignmentState.SWAP_REQUESTED },
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // --- Scenarios ---
   const downtown = savedLocations[0];
   const downtownTimezone = downtown.timezone;
 
-  for (let dayOffset = 1; dayOffset <= 14; dayOffset++) {
-    const baseDate = now
-      .toZonedDateTimeISO(downtownTimezone)
-      .add({ days: dayOffset });
-    const shiftDate = new Date(
-      baseDate
-        .with({ hour: 10, minute: 0, second: 0, nanosecond: 0 })
+  // 1. The Sunday Night Chaos: Upcoming Sunday 7pm-11pm at Downtown, assigned to James Bartender
+  // Find next Sunday
+  let nextSunday = now.toZonedDateTimeISO(downtownTimezone);
+  while (nextSunday.dayOfWeek !== 7) {
+    nextSunday = nextSunday.add({ days: 1 });
+  }
+  const chaosStart = new Date(
+    nextSunday
+      .with({ hour: 19, minute: 0, second: 0, nanosecond: 0 })
+      .toInstant()
+      .toString(),
+  );
+  const chaosEnd = new Date(
+    nextSunday
+      .with({ hour: 23, minute: 0, second: 0, nanosecond: 0 })
+      .toInstant()
+      .toString(),
+  );
+
+  const chaosShift = await shiftRepo.save(
+    shiftRepo.create({
+      locationId: downtown.id,
+      startTime: chaosStart,
+      endTime: chaosEnd,
+      state: ShiftState.OPEN,
+    }),
+  );
+
+  const chaosSlot = await shiftSkillRepo.save(
+    shiftSkillRepo.create({
+      shiftId: chaosShift.id,
+      skillId: savedSkills[0].id,
+      headcount: 1,
+    }),
+  );
+
+  await assignmentRepo.save(
+    assignmentRepo.create({
+      shiftSkillId: chaosSlot.id,
+      staffMemberId: savedStaff[7].profile.id, // James Bartender
+      state: AssignmentState.ASSIGNED,
+    }),
+  );
+
+  // 2. The Overtime Trap: John Bartender gets 5x 8h shifts (40 hours) this current week
+  // Walk back to Monday of this week
+  let thisMonday = now.toZonedDateTimeISO(downtownTimezone);
+  while (thisMonday.dayOfWeek !== 1) {
+    thisMonday = thisMonday.subtract({ days: 1 });
+  }
+  for (let d = 0; d < 5; d++) {
+    const otDate = thisMonday.add({ days: d });
+    const otStart = new Date(
+      otDate
+        .with({ hour: 9, minute: 0, second: 0, nanosecond: 0 })
         .toInstant()
         .toString(),
     );
-    const shiftEnd = new Date(
-      baseDate
+    const otEnd = new Date(
+      otDate
+        .with({ hour: 17, minute: 0, second: 0, nanosecond: 0 })
+        .toInstant()
+        .toString(),
+    );
+
+    const otShift = await shiftRepo.save(
+      shiftRepo.create({
+        locationId: downtown.id,
+        startTime: otStart,
+        endTime: otEnd,
+        state: ShiftState.OPEN,
+      }),
+    );
+    const otSlot = await shiftSkillRepo.save(
+      shiftSkillRepo.create({
+        shiftId: otShift.id,
+        skillId: savedSkills[0].id,
+        headcount: 1,
+      }),
+    );
+    await assignmentRepo.save(
+      assignmentRepo.create({
+        shiftSkillId: otSlot.id,
+        staffMemberId: savedStaff[0].profile.id,
+        state: AssignmentState.ASSIGNED,
+      }),
+    );
+  }
+
+  // 3. The Fairness Complaint: 3 past Saturday shifts for Server. 2 to Sarah, 1 to Lisa, none to Emma.
+  let pastSaturday = now.toZonedDateTimeISO(downtownTimezone);
+  while (pastSaturday.dayOfWeek !== 6) {
+    pastSaturday = pastSaturday.subtract({ days: 1 });
+  }
+  const fairnessStaff = [
+    savedStaff[1].profile.id,
+    savedStaff[1].profile.id,
+    savedStaff[6].profile.id,
+  ]; // Sarah, Sarah, Lisa
+  for (let w = 1; w <= 3; w++) {
+    const fairnessDate = pastSaturday.subtract({ weeks: w });
+    const fStart = new Date(
+      fairnessDate
         .with({ hour: 18, minute: 0, second: 0, nanosecond: 0 })
         .toInstant()
         .toString(),
     );
+    const fEnd = new Date(
+      fairnessDate
+        .with({ hour: 22, minute: 0, second: 0, nanosecond: 0 })
+        .toInstant()
+        .toString(),
+    );
 
-    const existingShift = await shiftRepo.findOne({
-      where: {
+    const fShift = await shiftRepo.save(
+      shiftRepo.create({
         locationId: downtown.id,
-        startTime: new Date(shiftDate),
-        endTime: new Date(shiftEnd),
-      },
-    });
-
-    if (!existingShift) {
-      const shift = await shiftRepo.save(
-        shiftRepo.create({
-          locationId: downtown.id,
-          startTime: shiftDate,
-          endTime: shiftEnd,
-          state: ShiftState.OPEN,
-        }),
-      );
-
-      const bartenderSlot = await shiftSkillRepo.save(
-        shiftSkillRepo.create({
-          shiftId: shift.id,
-          skillId: savedSkills[0].id,
-          headcount: 1,
-        }),
-      );
-
-      const serverSlot = await shiftSkillRepo.save(
-        shiftSkillRepo.create({
-          shiftId: shift.id,
-          skillId: savedSkills[2].id,
-          headcount: 2,
-        }),
-      );
-
-      if (dayOffset % 3 === 0) {
-        await assignmentRepo.save(
-          assignmentRepo.create({
-            shiftSkillId: bartenderSlot.id,
-            staffMemberId: savedStaff[0].profile.id,
-            state: AssignmentState.ASSIGNED,
-          }),
-        );
-        await shiftRepo.update(shift.id, {
-          state: ShiftState.PARTIALLY_FILLED,
-        });
-      }
-
-      if (dayOffset % 5 === 0) {
-        await assignmentRepo.save(
-          assignmentRepo.create({
-            shiftSkillId: serverSlot.id,
-            staffMemberId: savedStaff[1].profile.id,
-            state: AssignmentState.ASSIGNED,
-          }),
-        );
-        await shiftRepo.update(shift.id, {
-          state: ShiftState.PARTIALLY_FILLED,
-        });
-      }
-
-      console.log(`Created shift: ${shiftDate.toISOString()} at Downtown`);
-    }
+        startTime: fStart,
+        endTime: fEnd,
+        state: ShiftState.OPEN,
+      }),
+    );
+    const fSlot = await shiftSkillRepo.save(
+      shiftSkillRepo.create({
+        shiftId: fShift.id,
+        skillId: savedSkills[2].id,
+        headcount: 1,
+      }),
+    );
+    await assignmentRepo.save(
+      assignmentRepo.create({
+        shiftSkillId: fSlot.id,
+        staffMemberId: fairnessStaff[w - 1],
+        state: AssignmentState.ASSIGNED,
+      }),
+    );
   }
 
   console.log('Seed complete!');
