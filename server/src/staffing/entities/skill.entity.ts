@@ -21,7 +21,7 @@ export class Skill {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
-  @OneToMany('StaffSkill', 'skill')
+  @OneToMany(() => StaffSkill, (staffSkill) => staffSkill.skill)
   staffSkills: StaffSkill[];
 
   @CreateDateColumn({ name: 'created_at' })

@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -25,7 +26,10 @@ export class StaffAvailability {
   id: number;
 
   @ManyToOne(() => UserProfile, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'staff_member_id' })
   @Index()
+  staffMember: UserProfile;
+
   @Column({ name: 'staff_member_id' })
   staffMemberId: number;
 
