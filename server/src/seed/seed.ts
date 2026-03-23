@@ -441,8 +441,9 @@ async function seed() {
         },
       });
 
-      if (!existingShift) {
-        const shift = await shiftRepo.save(
+      let shift = existingShift;
+      if (!shift) {
+        shift = await shiftRepo.save(
           shiftRepo.create({
             locationId: location.id,
             startTime: shiftDate,
@@ -450,30 +451,71 @@ async function seed() {
             state: ShiftState.OPEN,
           }),
         );
+      }
 
-        // Only add bartender and server skills to Downtown to keep noise low
-        if (location.name === 'Downtown') {
-          const bartenderSlot = await shiftSkillRepo.save(
+      // Only add bartender and server skills to Downtown to keep noise low
+      if (location.name === 'Downtown') {
+        const bartenderSkillId = savedSkills[0].id;
+        let bartenderSlot = await shiftSkillRepo.findOne({
+          where: { shiftId: shift.id, skillId: bartenderSkillId },
+        });
+
+        if (!bartenderSlot) {
+          bartenderSlot = await shiftSkillRepo.save(
             shiftSkillRepo.create({
               shiftId: shift.id,
-              skillId: savedSkills[0].id,
+              skillId: bartenderSkillId,
               headcount: 1,
             }),
           );
+        }
 
-          const serverSlot = await shiftSkillRepo.save(
+        const serverSkillId = savedSkills[2].id;
+        let serverSlot = await shiftSkillRepo.findOne({
+          where: { shiftId: shift.id, skillId: serverSkillId },
+        });
+
+        if (!serverSlot) {
+          serverSlot = await shiftSkillRepo.save(
             shiftSkillRepo.create({
               shiftId: shift.id,
-              skillId: savedSkills[2].id,
+              skillId: serverSkillId,
               headcount: 2,
             }),
           );
+        }
 
-          if (dayOffset % 3 === 0) {
+        if (dayOffset % 3 === 0) {
+          const staffMemberId = savedStaff[3].profile.id; // Switch from savedStaff[0] (John) to savedStaff[3] (David) for stability
+          const existingAssignment = await assignmentRepo.findOne({
+            where: { shiftSkillId: bartenderSlot.id, staffMemberId },
+          });
+
+          if (!existingAssignment) {
             await assignmentRepo.save(
               assignmentRepo.create({
                 shiftSkillId: bartenderSlot.id,
-                staffMemberId: savedStaff[0].profile.id,
+                staffMemberId,
+                state: AssignmentState.ASSIGNED,
+              }),
+            );
+            await shiftRepo.update(shift.id, {
+              state: ShiftState.PARTIALLY_FILLED,
+            });
+          }
+        }
+
+        if (dayOffset % 5 === 0) {
+          const staffMemberId = savedStaff[1].profile.id;
+          const existingAssignment = await assignmentRepo.findOne({
+            where: { shiftSkillId: serverSlot.id, staffMemberId },
+          });
+
+          if (!existingAssignment) {
+            await assignmentRepo.save(
+              assignmentRepo.create({
+                shiftSkillId: serverSlot.id,
+                staffMemberId,
                 state: AssignmentState.ASSIGNED,
               }),
             );
@@ -482,27 +524,21 @@ async function seed() {
             });
           }
 
-          if (dayOffset % 5 === 0) {
-            await assignmentRepo.save(
-              assignmentRepo.create({
+          // The Regret Swap: Create pending swap for Sarah on day 10
+          if (dayOffset === 10) {
+            const assignmentToUpdate = await assignmentRepo.findOne({
+              where: {
+                staffMemberId,
                 shiftSkillId: serverSlot.id,
-                staffMemberId: savedStaff[1].profile.id,
-                state: AssignmentState.ASSIGNED,
-              }),
-            );
-            await shiftRepo.update(shift.id, {
-              state: ShiftState.PARTIALLY_FILLED,
+              },
             });
-
-            // The Regret Swap: Create pending swap for Sarah on day 10
-            if (dayOffset === 10) {
-              await assignmentRepo.update(
-                {
-                  staffMemberId: savedStaff[1].profile.id,
-                  shiftSkillId: serverSlot.id,
-                },
-                { state: AssignmentState.SWAP_REQUESTED },
-              );
+            if (
+              assignmentToUpdate &&
+              assignmentToUpdate.state !== AssignmentState.SWAP_REQUESTED
+            ) {
+              await assignmentRepo.update(assignmentToUpdate.id, {
+                state: AssignmentState.SWAP_REQUESTED,
+              });
             }
           }
         }
@@ -533,30 +569,55 @@ async function seed() {
       .toString(),
   );
 
-  const chaosShift = await shiftRepo.save(
-    shiftRepo.create({
+  const existingChaosShift = await shiftRepo.findOne({
+    where: {
       locationId: downtown.id,
       startTime: chaosStart,
       endTime: chaosEnd,
-      state: ShiftState.OPEN,
-    }),
-  );
+    },
+  });
 
-  const chaosSlot = await shiftSkillRepo.save(
-    shiftSkillRepo.create({
-      shiftId: chaosShift.id,
-      skillId: savedSkills[0].id,
-      headcount: 1,
-    }),
-  );
+  let chaosShift = existingChaosShift;
+  if (!chaosShift) {
+    chaosShift = await shiftRepo.save(
+      shiftRepo.create({
+        locationId: downtown.id,
+        startTime: chaosStart,
+        endTime: chaosEnd,
+        state: ShiftState.OPEN,
+      }),
+    );
+  }
 
-  await assignmentRepo.save(
-    assignmentRepo.create({
-      shiftSkillId: chaosSlot.id,
-      staffMemberId: savedStaff[7].profile.id, // James Bartender
-      state: AssignmentState.ASSIGNED,
-    }),
-  );
+  const chaosSkillId = savedSkills[0].id;
+  let chaosSlot = await shiftSkillRepo.findOne({
+    where: { shiftId: chaosShift.id, skillId: chaosSkillId },
+  });
+
+  if (!chaosSlot) {
+    chaosSlot = await shiftSkillRepo.save(
+      shiftSkillRepo.create({
+        shiftId: chaosShift.id,
+        skillId: chaosSkillId,
+        headcount: 1,
+      }),
+    );
+  }
+
+  const chaosStaffId = savedStaff[7].profile.id; // James Bartender
+  const existingChaosAssignment = await assignmentRepo.findOne({
+    where: { shiftSkillId: chaosSlot.id, staffMemberId: chaosStaffId },
+  });
+
+  if (!existingChaosAssignment) {
+    await assignmentRepo.save(
+      assignmentRepo.create({
+        shiftSkillId: chaosSlot.id,
+        staffMemberId: chaosStaffId,
+        state: AssignmentState.ASSIGNED,
+      }),
+    );
+  }
 
   // 2. The Overtime Trap: John Bartender gets 5x 8h shifts (40 hours) this current week
   // Walk back to Monday of this week
@@ -579,28 +640,55 @@ async function seed() {
         .toString(),
     );
 
-    const otShift = await shiftRepo.save(
-      shiftRepo.create({
+    const existingOtShift = await shiftRepo.findOne({
+      where: {
         locationId: downtown.id,
         startTime: otStart,
         endTime: otEnd,
-        state: ShiftState.OPEN,
-      }),
-    );
-    const otSlot = await shiftSkillRepo.save(
-      shiftSkillRepo.create({
-        shiftId: otShift.id,
-        skillId: savedSkills[0].id,
-        headcount: 1,
-      }),
-    );
-    await assignmentRepo.save(
-      assignmentRepo.create({
-        shiftSkillId: otSlot.id,
-        staffMemberId: savedStaff[0].profile.id,
-        state: AssignmentState.ASSIGNED,
-      }),
-    );
+      },
+    });
+
+    let otShift = existingOtShift;
+    if (!otShift) {
+      otShift = await shiftRepo.save(
+        shiftRepo.create({
+          locationId: downtown.id,
+          startTime: otStart,
+          endTime: otEnd,
+          state: ShiftState.OPEN,
+        }),
+      );
+    }
+
+    const otSkillId = savedSkills[0].id;
+    let otSlot = await shiftSkillRepo.findOne({
+      where: { shiftId: otShift.id, skillId: otSkillId },
+    });
+
+    if (!otSlot) {
+      otSlot = await shiftSkillRepo.save(
+        shiftSkillRepo.create({
+          shiftId: otShift.id,
+          skillId: otSkillId,
+          headcount: 1,
+        }),
+      );
+    }
+
+    const otStaffId = savedStaff[0].profile.id;
+    const existingOtAssignment = await assignmentRepo.findOne({
+      where: { shiftSkillId: otSlot.id, staffMemberId: otStaffId },
+    });
+
+    if (!existingOtAssignment) {
+      await assignmentRepo.save(
+        assignmentRepo.create({
+          shiftSkillId: otSlot.id,
+          staffMemberId: otStaffId,
+          state: AssignmentState.ASSIGNED,
+        }),
+      );
+    }
   }
 
   // 3. The Fairness Complaint: 3 past Saturday shifts for Server. 2 to Sarah, 1 to Lisa, none to Emma.
@@ -628,28 +716,55 @@ async function seed() {
         .toString(),
     );
 
-    const fShift = await shiftRepo.save(
-      shiftRepo.create({
+    const existingFShift = await shiftRepo.findOne({
+      where: {
         locationId: downtown.id,
         startTime: fStart,
         endTime: fEnd,
-        state: ShiftState.OPEN,
-      }),
-    );
-    const fSlot = await shiftSkillRepo.save(
-      shiftSkillRepo.create({
-        shiftId: fShift.id,
-        skillId: savedSkills[2].id,
-        headcount: 1,
-      }),
-    );
-    await assignmentRepo.save(
-      assignmentRepo.create({
-        shiftSkillId: fSlot.id,
-        staffMemberId: fairnessStaff[w - 1],
-        state: AssignmentState.ASSIGNED,
-      }),
-    );
+      },
+    });
+
+    let fShift = existingFShift;
+    if (!fShift) {
+      fShift = await shiftRepo.save(
+        shiftRepo.create({
+          locationId: downtown.id,
+          startTime: fStart,
+          endTime: fEnd,
+          state: ShiftState.OPEN,
+        }),
+      );
+    }
+
+    const fSkillId = savedSkills[2].id;
+    let fSlot = await shiftSkillRepo.findOne({
+      where: { shiftId: fShift.id, skillId: fSkillId },
+    });
+
+    if (!fSlot) {
+      fSlot = await shiftSkillRepo.save(
+        shiftSkillRepo.create({
+          shiftId: fShift.id,
+          skillId: fSkillId,
+          headcount: 1,
+        }),
+      );
+    }
+
+    const fStaffId = fairnessStaff[w - 1];
+    const existingFAssignment = await assignmentRepo.findOne({
+      where: { shiftSkillId: fSlot.id, staffMemberId: fStaffId },
+    });
+
+    if (!existingFAssignment) {
+      await assignmentRepo.save(
+        assignmentRepo.create({
+          shiftSkillId: fSlot.id,
+          staffMemberId: fStaffId,
+          state: AssignmentState.ASSIGNED,
+        }),
+      );
+    }
   }
 
   console.log('Seed complete!');
