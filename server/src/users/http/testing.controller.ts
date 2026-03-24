@@ -65,7 +65,6 @@ export class TestingController {
   @ApiOperation({ summary: 'Test login by email or externalId' })
   @ApiResponse({ status: 200, type: TestingLoginResponseDto })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiTags('testing')
   async login(
     @Body() dto: TestingLoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -126,7 +125,6 @@ export class TestingController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Clear auth cookie (test logout)' })
   @ApiResponse({ status: 204 })
-  @ApiTags('testing')
   logout(@Res({ passthrough: true }) res: Response): void {
     this.assertTestingEnabled();
 

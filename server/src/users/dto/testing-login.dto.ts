@@ -1,5 +1,6 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { EmployeeRole } from '../user.types';
 
 export class TestingLoginDto {
   @ApiProperty({
@@ -9,23 +10,6 @@ export class TestingLoginDto {
   @IsString()
   @IsNotEmpty()
   identifier: string;
-}
-
-export class TestingLoginResponseDto {
-  @ApiProperty()
-  externalId: string;
-
-  @ApiProperty()
-  email: string;
-
-  @ApiProperty()
-  name: string;
-
-  @ApiProperty({ enum: ['ADMIN', 'MANAGER', 'STAFF'] })
-  role: string;
-
-  @ApiProperty({ required: false })
-  homeTimezone?: string;
 }
 
 export class TestingEmployeeDto {
@@ -38,9 +22,11 @@ export class TestingEmployeeDto {
   @ApiProperty()
   name: string;
 
-  @ApiProperty({ enum: ['ADMIN', 'MANAGER', 'STAFF'] })
+  @ApiProperty({ enum: EmployeeRole })
   role: string;
 
   @ApiProperty({ required: false })
   homeTimezone?: string;
 }
+
+export class TestingLoginResponseDto extends TestingEmployeeDto {}
