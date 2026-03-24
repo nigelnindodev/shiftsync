@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ShiftRepository, ShiftWithSkillSlots } from '../repositories';
-import { AssignmentRepository } from '../repositories';
 import { SkillRepository } from '../../staffing/repositories';
 import { DomainEventRepository } from '../repositories';
 import { ShiftState } from '../entities/shift.entity';
@@ -22,7 +21,6 @@ export class ShiftService {
 
   constructor(
     private readonly shiftRepo: ShiftRepository,
-    private readonly assignmentRepo: AssignmentRepository,
     private readonly skillRepo: SkillRepository,
     private readonly eventRepo: DomainEventRepository,
     private readonly clockService: ClockService,
@@ -129,24 +127,10 @@ export class ShiftService {
       );
     }
 
-    // Cascade cancel pending swap/drop requests on this shift
-    const cancelPendingResult =
-      await this.assignmentRepo.cancelPendingForShift(shiftId);
-    if (cancelPendingResult.isErr) {
-      this.logger.error(
-        'Failed to cancel pending swap/drop requests for shift',
-        cancelPendingResult.error,
-      );
-      throw new BadRequestException(
-        'Failed to cancel pending swap/drop requests',
-      );
-    }
-
-    const updateResult = await this.shiftRepo.updateState(
-      shiftId,
-      ShiftState.CANCELLED,
-    );
-    if (updateResult.isErr) {
+    // Cancel shift with cascade of pending swap/drop requests (single transaction)
+    const result = await this.shiftRepo.cancelWithPendingCascade(shiftId);
+    if (result.isErr) {
+      this.logger.error('Failed to cancel shift', result.error);
       throw new BadRequestException('Failed to cancel shift');
     }
 

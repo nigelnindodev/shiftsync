@@ -5,7 +5,6 @@ import { of } from 'rxjs';
 import { ShiftService } from './shift.service';
 import { ShiftRepository } from '../repositories';
 import { ShiftSkillRepository } from '../repositories';
-import { AssignmentRepository } from '../repositories';
 import { DomainEventRepository } from '../repositories';
 import { SkillRepository } from '../../staffing/repositories';
 import { ClockService } from '../../common/clock/clock.service';
@@ -60,7 +59,6 @@ describe('ShiftService (Integration)', () => {
         ShiftService,
         ShiftRepository,
         ShiftSkillRepository,
-        AssignmentRepository,
         DomainEventRepository,
         SkillRepository,
         {

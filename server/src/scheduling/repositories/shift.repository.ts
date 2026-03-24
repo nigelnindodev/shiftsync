@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Shift, ShiftState } from '../entities/shift.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
+import { Assignment, AssignmentState } from '../entities/assignment.entity';
 import { Maybe, Result } from 'true-myth';
 
 export interface ShiftSkillWithFill {
@@ -139,6 +140,44 @@ export class ShiftRepository {
       this.logger.error(`Failed to update shift ${id} state`, e);
       return Result.err(
         e instanceof Error ? e : new Error('Failed to update shift state'),
+      );
+    }
+  }
+
+  async cancelWithPendingCascade(
+    shiftId: number,
+  ): Promise<Result<void, Error>> {
+    const pendingStates = [
+      AssignmentState.SWAP_REQUESTED,
+      AssignmentState.SWAP_PENDING_APPROVAL,
+      AssignmentState.DROP_REQUESTED,
+      AssignmentState.DROP_PENDING_APPROVAL,
+    ];
+
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        await manager
+          .createQueryBuilder()
+          .update(Assignment)
+          .set({ state: AssignmentState.CANCELLED })
+          .where(
+            `shift_skill_id IN (SELECT id FROM shift_skills WHERE shift_id = :shiftId)`,
+            { shiftId },
+          )
+          .andWhere('state IN (:...states)', { states: pendingStates })
+          .execute();
+
+        await manager.update(Shift, shiftId, {
+          state: ShiftState.CANCELLED,
+        });
+      });
+      return Result.ok(undefined);
+    } catch (e) {
+      this.logger.error(`Failed to cancel shift ${shiftId} with cascade`, e);
+      return Result.err(
+        e instanceof Error
+          ? e
+          : new Error('Failed to cancel shift with cascade'),
       );
     }
   }
