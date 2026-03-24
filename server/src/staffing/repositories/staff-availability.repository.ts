@@ -32,6 +32,20 @@ export class StaffAvailabilityRepository {
     });
   }
 
+  async findExceptionsForDateRange(
+    staffMemberId: number,
+    startDate: string,
+    endDate: string,
+  ): Promise<StaffAvailabilityException[]> {
+    return this.exceptionRepo
+      .createQueryBuilder('e')
+      .where('e.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('e.date >= :startDate', { startDate })
+      .andWhere('e.date <= :endDate', { endDate })
+      .orderBy('e.date', 'ASC')
+      .getMany();
+  }
+
   async upsertAvailability(
     staffMemberId: number,
     dayOfWeek: DayOfWeek,
