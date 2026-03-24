@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
@@ -43,6 +46,19 @@ export class ShiftController {
       dto.skills,
       employee.id,
     );
+  }
+
+  @Delete(':shiftId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'Cancel a shift' })
+  @ApiResponse({ status: 204 })
+  async cancelShift(
+    @Param('shiftId', ParseIntPipe) shiftId: number,
+    @Req() req: Request,
+  ): Promise<void> {
+    const employee = req['employee'] as Employee;
+    return this.shiftService.cancelShift(shiftId, employee.id);
   }
 
   @Get(':shiftId/skills')

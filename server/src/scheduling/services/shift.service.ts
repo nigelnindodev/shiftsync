@@ -127,11 +127,10 @@ export class ShiftService {
       );
     }
 
-    const updateResult = await this.shiftRepo.updateState(
-      shiftId,
-      ShiftState.CANCELLED,
-    );
-    if (updateResult.isErr) {
+    // Cancel shift with cascade of pending swap/drop requests (single transaction)
+    const result = await this.shiftRepo.cancelWithPendingCascade(shiftId);
+    if (result.isErr) {
+      this.logger.error('Failed to cancel shift', result.error);
       throw new BadRequestException('Failed to cancel shift');
     }
 
