@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { StaffScheduleService } from './staff-schedule.service';
 import { AssignmentRepository } from '../repositories';
+import { ClockService } from '../../common/clock/clock.service';
 import { clearDatabase } from '../../../test/db-utils';
 
 import { User } from '../../users/entity/user.entity';
@@ -56,6 +57,12 @@ describe('StaffScheduleService (Integration)', () => {
       providers: [
         StaffScheduleService,
         AssignmentRepository,
+        {
+          provide: ClockService,
+          useValue: {
+            now: () => ({ toString: () => '2026-03-23T12:00:00.000Z' }),
+          },
+        },
         {
           provide: SCHEDULING_EVENTS_CLIENT,
           useValue: { emit: () => ({ subscribe: () => {} }) },
@@ -367,6 +374,55 @@ describe('StaffScheduleService (Integration)', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].shiftId).toBe(shiftInRange.id);
+    });
+
+    it('handles exact boundary times correctly', async () => {
+      const { employee } = await createEmployee('Edge Case Test');
+      const location = await createLocation('Edge Location');
+      const skill = await createSkill('Edge Skill');
+
+      const shiftAtStart = await createShift(
+        location.id,
+        new Date('2026-03-24T00:00:00Z'),
+        new Date('2026-03-24T08:00:00Z'),
+      );
+      const shiftAtEnd = await createShift(
+        location.id,
+        new Date('2026-03-30T23:59:00Z'),
+        new Date('2026-03-31T08:00:00Z'),
+      );
+      const shiftJustBeforeEnd = await createShift(
+        location.id,
+        new Date('2026-03-30T23:59:59Z'),
+        new Date('2026-03-31T08:00:00Z'),
+      );
+      const shiftAfterEnd = await createShift(
+        location.id,
+        new Date('2026-03-31T00:00:00Z'),
+        new Date('2026-03-31T08:00:00Z'),
+      );
+
+      const ss1 = await createShiftSkill(shiftAtStart.id, skill.id);
+      const ss2 = await createShiftSkill(shiftAtEnd.id, skill.id);
+      const ss3 = await createShiftSkill(shiftJustBeforeEnd.id, skill.id);
+      const ss4 = await createShiftSkill(shiftAfterEnd.id, skill.id);
+
+      await createAssignment(ss1.id, employee.id);
+      await createAssignment(ss2.id, employee.id);
+      await createAssignment(ss3.id, employee.id);
+      await createAssignment(ss4.id, employee.id);
+
+      const result = await service.getStaffSchedule(
+        employee.id,
+        '2026-03-24',
+        '2026-03-30',
+      );
+
+      const shiftIds = result.map((r) => r.shiftId);
+      expect(shiftIds).toContain(shiftAtStart.id);
+      expect(shiftIds).toContain(shiftAtEnd.id);
+      expect(shiftIds).toContain(shiftJustBeforeEnd.id);
+      expect(shiftIds).not.toContain(shiftAfterEnd.id);
     });
 
     it('throws BadRequestException when startDate >= endDate', async () => {
