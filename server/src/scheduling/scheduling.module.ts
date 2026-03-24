@@ -30,6 +30,7 @@ import { ShiftController } from './controllers/shift.controller';
 import { AssignmentController } from './controllers/assignment.controller';
 import { StaffScheduleController } from './controllers/staff-schedule.controller';
 import { StaffAvailabilityController } from './controllers/staff-availability.controller';
+import { StaffSwapDropController } from './controllers/staff-swap-drop.controller';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { SCHEDULING_EVENTS_CLIENT } from './scheduling.constants';
 import { AppConfigService } from '../config';
@@ -64,6 +65,7 @@ import { AppConfigService } from '../config';
     AssignmentController,
     StaffScheduleController,
     StaffAvailabilityController,
+    StaffSwapDropController,
   ],
   providers: [
     ShiftRepository,

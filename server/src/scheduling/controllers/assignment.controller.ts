@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import {
   CreateAssignmentDto,
   AssignmentResponseDto,
   EligibleStaffDto,
+  ApproveSwapDropDto,
 } from '../dto/assignment.dto';
 
 @ApiTags('assignments')
@@ -97,6 +99,25 @@ export class AssignmentController {
       slotId,
       assignmentId,
       employee.id,
+    );
+  }
+
+  @Put('assignments/:assignmentId/swap-drop')
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'Approve or reject a pending swap/drop request' })
+  @ApiResponse({ status: 200 })
+  async approveSwapDrop(
+    @Param('shiftId', ParseIntPipe) shiftId: number,
+    @Param('slotId', ParseIntPipe) slotId: number,
+    @Param('assignmentId', ParseIntPipe) assignmentId: number,
+    @Body() dto: ApproveSwapDropDto,
+    @Req() req: Request,
+  ): Promise<void> {
+    const employee = req['employee'] as Employee;
+    return this.assignmentService.approveSwapDrop(
+      assignmentId,
+      employee.id,
+      dto.approved,
     );
   }
 }

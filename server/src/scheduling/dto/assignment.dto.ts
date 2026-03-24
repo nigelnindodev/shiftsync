@@ -1,4 +1,4 @@
-import { IsInt } from 'class-validator';
+import { IsBoolean, IsInt } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateAssignmentDto {
@@ -31,4 +31,16 @@ export class EligibleStaffDto {
     code: string;
     message: string;
   }>;
+}
+
+export class RequestSwapDto {
+  @ApiProperty({ description: 'Target staff member to swap with', example: 2 })
+  @IsInt()
+  targetStaffMemberId: number;
+}
+
+export class ApproveSwapDropDto {
+  @ApiProperty({ description: 'Whether to approve or reject', example: true })
+  @IsBoolean()
+  approved: boolean;
 }

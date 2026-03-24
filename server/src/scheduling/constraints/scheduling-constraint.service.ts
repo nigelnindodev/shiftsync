@@ -262,7 +262,7 @@ export class SchedulingConstraintService {
       JOIN shift_skills ss ON ss.id = assignments.shift_skill_id
       JOIN shifts ON shifts.id = ss.shift_id
       WHERE assignments.staff_member_id = $1
-        AND assignments.state IN ('ASSIGNED', 'SWAP_REQUESTED', 'SWAP_PENDING_APPROVAL')
+        AND assignments.state IN ('ASSIGNED', 'SWAP_REQUESTED', 'SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL')
         AND shifts.end_time <= $2
         AND shifts.end_time >= $3
       ORDER BY shifts.end_time DESC
