@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { ShiftService } from './shift.service';
 import { ShiftRepository } from '../repositories';
 import { ShiftSkillRepository } from '../repositories';
+import { AssignmentRepository } from '../repositories';
 import { DomainEventRepository } from '../repositories';
 import { SkillRepository } from '../../staffing/repositories';
 import { ClockService } from '../../common/clock/clock.service';
@@ -12,11 +13,13 @@ import { clearDatabase } from '../../../test/db-utils';
 
 import { User } from '../../users/entity/user.entity';
 import { Employee } from '../../users/entity/employee.entity';
+import { EmployeeRole } from '../../users/user.types';
 import { Token } from '../../auth/entity/tokens.entity';
 import { Location } from '../../staffing/entities/location.entity';
 import { Skill } from '../../staffing/entities/skill.entity';
 import { Shift, ShiftState } from '../entities/shift.entity';
 import { ShiftSkill } from '../entities/shift-skill.entity';
+import { Assignment, AssignmentState } from '../entities/assignment.entity';
 import { DomainEvent } from '../entities/domain-event.entity';
 import { SchedulingEventPatterns } from '../events/scheduling-events';
 import { SCHEDULING_EVENTS_CLIENT } from '../scheduling.constants';
@@ -49,6 +52,7 @@ describe('ShiftService (Integration)', () => {
           Skill,
           Shift,
           ShiftSkill,
+          Assignment,
           DomainEvent,
         ]),
       ],
@@ -56,6 +60,7 @@ describe('ShiftService (Integration)', () => {
         ShiftService,
         ShiftRepository,
         ShiftSkillRepository,
+        AssignmentRepository,
         DomainEventRepository,
         SkillRepository,
         {
@@ -97,6 +102,20 @@ describe('ShiftService (Integration)', () => {
       name: 'Test Skill',
       isActive: active,
     });
+  }
+
+  async function createEmployee(name = 'Test Staff') {
+    const user = await dataSource.getRepository(User).save({
+      email: `${name.toLowerCase().replace(/ /g, '.')}@example.com`,
+      name,
+    });
+    const employee = await dataSource.getRepository(Employee).save({
+      externalId: user.externalId,
+      role: EmployeeRole.STAFF,
+      homeTimezone: 'UTC',
+      desiredHoursPerWeek: 40,
+    });
+    return { user, employee };
   }
 
   describe('createShift', () => {
@@ -255,6 +274,98 @@ describe('ShiftService (Integration)', () => {
       await expect(shiftService.cancelShift(shift.id)).rejects.toThrow(
         'Cannot cancel shift in state COMPLETED',
       );
+    });
+
+    it('cancels pending swap requests when shift is cancelled', async () => {
+      const location = await createLocation();
+      const skill = await createSkill();
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: staffC } = await createEmployee('Staff C');
+
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-24T10:00:00Z'),
+        endTime: new Date('2026-03-24T18:00:00Z'),
+        state: ShiftState.PARTIALLY_FILLED,
+      });
+      const shiftSkill = await dataSource.getRepository(ShiftSkill).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 2,
+      });
+
+      await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: staffA.id,
+        state: AssignmentState.SWAP_REQUESTED,
+        swapTargetId: staffB.id,
+      });
+      await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: staffB.id,
+        state: AssignmentState.SWAP_PENDING_APPROVAL,
+      });
+      const assigned = await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: staffC.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await shiftService.cancelShift(shift.id);
+
+      const assignments = await dataSource
+        .getRepository(Assignment)
+        .find({ where: { shiftSkillId: shiftSkill.id } });
+
+      const pending = assignments.filter(
+        (a) =>
+          a.state === AssignmentState.SWAP_REQUESTED ||
+          a.state === AssignmentState.SWAP_PENDING_APPROVAL,
+      );
+      expect(pending).toHaveLength(0);
+
+      const cancelledPending = assignments.filter(
+        (a) => a.state === AssignmentState.CANCELLED && a.id !== assigned.id,
+      );
+      expect(cancelledPending).toHaveLength(2);
+
+      // ASSIGNED assignment remains unchanged
+      const unchanged = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assigned.id });
+      expect(unchanged?.state).toBe(AssignmentState.ASSIGNED);
+    });
+
+    it('cancels pending drop requests when shift is cancelled', async () => {
+      const location = await createLocation();
+      const skill = await createSkill();
+      const { employee: staffA } = await createEmployee('Staff A');
+
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-24T10:00:00Z'),
+        endTime: new Date('2026-03-24T18:00:00Z'),
+        state: ShiftState.PARTIALLY_FILLED,
+      });
+      const shiftSkill = await dataSource.getRepository(ShiftSkill).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 1,
+      });
+
+      const dropPending = await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: staffA.id,
+        state: AssignmentState.DROP_REQUESTED,
+      });
+
+      await shiftService.cancelShift(shift.id);
+
+      const updated = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: dropPending.id });
+      expect(updated?.state).toBe(AssignmentState.CANCELLED);
     });
   });
 

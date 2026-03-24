@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ShiftRepository, ShiftWithSkillSlots } from '../repositories';
+import { AssignmentRepository } from '../repositories';
 import { SkillRepository } from '../../staffing/repositories';
 import { DomainEventRepository } from '../repositories';
 import { ShiftState } from '../entities/shift.entity';
@@ -21,6 +22,7 @@ export class ShiftService {
 
   constructor(
     private readonly shiftRepo: ShiftRepository,
+    private readonly assignmentRepo: AssignmentRepository,
     private readonly skillRepo: SkillRepository,
     private readonly eventRepo: DomainEventRepository,
     private readonly clockService: ClockService,
@@ -124,6 +126,19 @@ export class ShiftService {
     ) {
       throw new BadRequestException(
         `Cannot cancel shift in state ${shift.state}`,
+      );
+    }
+
+    // Cascade cancel pending swap/drop requests on this shift
+    const cancelPendingResult =
+      await this.assignmentRepo.cancelPendingForShift(shiftId);
+    if (cancelPendingResult.isErr) {
+      this.logger.error(
+        'Failed to cancel pending swap/drop requests for shift',
+        cancelPendingResult.error,
+      );
+      throw new BadRequestException(
+        'Failed to cancel pending swap/drop requests',
       );
     }
 
