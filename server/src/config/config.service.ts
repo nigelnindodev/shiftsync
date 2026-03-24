@@ -123,4 +123,8 @@ export class AppConfigService extends ConfigService {
   get isProduction() {
     return this.get('NODE_ENV') === 'production';
   }
+
+  get enableTestingEndpoints(): boolean {
+    return this.get('ENABLE_TESTING_ENDPOINTS') === 'true';
+  }
 }
