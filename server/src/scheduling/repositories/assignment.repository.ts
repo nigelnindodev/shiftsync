@@ -266,8 +266,8 @@ export class AssignmentRepository {
       .innerJoinAndSelect('ss.skill', 'sk')
       .innerJoinAndSelect('s.location', 'l')
       .where('a.staff_member_id = :staffMemberId', { staffMemberId })
-      .andWhere('s.start_time >= :startDate', { startDate })
       .andWhere('s.start_time <= :endDate', { endDate })
+      .andWhere('s.end_time >= :startDate', { startDate })
       .andWhere('a.state NOT IN (:...excludedStates)', {
         excludedStates: [
           AssignmentState.CANCELLED,

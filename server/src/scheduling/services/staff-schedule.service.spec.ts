@@ -137,11 +137,11 @@ describe('StaffScheduleService (Integration)', () => {
     });
   }
 
-  describe('getMySchedule', () => {
+  describe('getStaffSchedule', () => {
     it('returns empty array when staff has no assignments', async () => {
       const { employee } = await createEmployee();
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -162,7 +162,7 @@ describe('StaffScheduleService (Integration)', () => {
       const shiftSkill = await createShiftSkill(shift.id, skill.id);
       await createAssignment(shiftSkill.id, employee.id);
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -201,7 +201,7 @@ describe('StaffScheduleService (Integration)', () => {
       await createAssignment(ss1.id, employee.id);
       await createAssignment(ss2.id, employee.id);
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -228,7 +228,7 @@ describe('StaffScheduleService (Integration)', () => {
         AssignmentState.CANCELLED,
       );
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -253,7 +253,32 @@ describe('StaffScheduleService (Integration)', () => {
         AssignmentState.COMPLETED,
       );
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
+        employee.id,
+        '2026-03-24',
+        '2026-03-30',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('excludes NO_SHOW assignments', async () => {
+      const { employee } = await createEmployee();
+      const location = await createLocation();
+      const skill = await createSkill();
+      const shift = await createShift(
+        location.id,
+        new Date('2026-03-25T10:00:00Z'),
+        new Date('2026-03-25T18:00:00Z'),
+      );
+      const shiftSkill = await createShiftSkill(shift.id, skill.id);
+      await createAssignment(
+        shiftSkill.id,
+        employee.id,
+        AssignmentState.NO_SHOW,
+      );
+
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -278,7 +303,7 @@ describe('StaffScheduleService (Integration)', () => {
         AssignmentState.SWAP_REQUESTED,
       );
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -302,7 +327,7 @@ describe('StaffScheduleService (Integration)', () => {
       await createAssignment(shiftSkill.id, emp1.id);
       await createAssignment(shiftSkill.id, emp2.id);
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         emp1.id,
         '2026-03-24',
         '2026-03-30',
@@ -334,7 +359,7 @@ describe('StaffScheduleService (Integration)', () => {
       await createAssignment(ss1.id, employee.id);
       await createAssignment(ss2.id, employee.id);
 
-      const result = await service.getMySchedule(
+      const result = await service.getStaffSchedule(
         employee.id,
         '2026-03-24',
         '2026-03-30',
@@ -348,7 +373,7 @@ describe('StaffScheduleService (Integration)', () => {
       const { employee } = await createEmployee();
 
       await expect(
-        service.getMySchedule(employee.id, '2026-03-30', '2026-03-24'),
+        service.getStaffSchedule(employee.id, '2026-03-30', '2026-03-24'),
       ).rejects.toThrow('startDate must be before endDate');
     });
   });

@@ -28,7 +28,10 @@ export class Shift {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => ShiftTemplate, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => ShiftTemplate, (template) => template.shifts, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   @JoinColumn({ name: 'template_id' })
   @Index()
   template?: ShiftTemplate;
@@ -47,7 +50,9 @@ export class Shift {
   @Column({ name: 'schedule_id', nullable: true })
   scheduleId?: number;
 
-  @ManyToOne(() => Location, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Location, (location) => location.shifts, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'location_id' })
   @Index()
   location: Location;

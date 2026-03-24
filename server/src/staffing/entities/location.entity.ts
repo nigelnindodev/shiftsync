@@ -3,9 +3,11 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Shift } from '../../scheduling/entities/shift.entity';
 
 @Entity('locations')
 export class Location {
@@ -25,6 +27,9 @@ export class Location {
 
   @Column({ name: 'cutoff_hours', type: 'int', default: 48 })
   cutoffHours: number;
+
+  @OneToMany(() => Shift, (shift) => shift.location)
+  shifts: Shift[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

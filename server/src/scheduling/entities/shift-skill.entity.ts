@@ -29,8 +29,9 @@ export class ShiftSkill {
   @Column({ name: 'shift_id' })
   shiftId: number;
 
-  @ManyToOne(() => Skill)
+  @ManyToOne(() => Skill, (skill) => skill.shiftSkills)
   @JoinColumn({ name: 'skill_id' })
+  @Index()
   skill?: Skill;
 
   @Column({ name: 'skill_id' })

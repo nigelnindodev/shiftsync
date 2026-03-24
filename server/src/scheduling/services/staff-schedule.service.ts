@@ -8,7 +8,7 @@ export class StaffScheduleService {
 
   constructor(private readonly assignmentRepo: AssignmentRepository) {}
 
-  async getMySchedule(
+  async getStaffSchedule(
     staffMemberId: number,
     startDate: string,
     endDate: string,
