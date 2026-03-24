@@ -16,6 +16,7 @@ export class Location {
   @Column()
   name: string;
 
+  // TODO: Should we always keep a default timezone?
   @Column({ name: 'timezone', default: 'America/New_York' })
   timezone: string;
 

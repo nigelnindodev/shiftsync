@@ -51,7 +51,7 @@ export class ShiftRepository {
   }
 
   async create(
-    data: Omit<Shift, 'id' | 'createdAt' | 'updatedAt' | 'skills'>,
+    data: Omit<Shift, 'id' | 'createdAt' | 'updatedAt' | 'skills' | 'location'>,
     skillSlots: Array<{ skillId: number; headcount: number }>,
   ): Promise<Result<ShiftWithSkillSlots, Error>> {
     try {

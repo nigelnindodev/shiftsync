@@ -24,8 +24,10 @@ import { UsersModule } from '../users/users.module';
 import { SchedulingConstraintService } from './constraints/scheduling-constraint.service';
 import { ShiftService } from './services/shift.service';
 import { AssignmentService } from './services/assignment.service';
+import { StaffScheduleService } from './services/staff-schedule.service';
 import { ShiftController } from './controllers/shift.controller';
 import { AssignmentController } from './controllers/assignment.controller';
+import { StaffScheduleController } from './controllers/staff-schedule.controller';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { SCHEDULING_EVENTS_CLIENT } from './scheduling.constants';
 import { AppConfigService } from '../config';
@@ -55,7 +57,7 @@ import { AppConfigService } from '../config';
       },
     ]),
   ],
-  controllers: [ShiftController, AssignmentController],
+  controllers: [ShiftController, AssignmentController, StaffScheduleController],
   providers: [
     ShiftRepository,
     AssignmentRepository,
@@ -67,6 +69,7 @@ import { AppConfigService } from '../config';
     SchedulingConstraintService,
     ShiftService,
     AssignmentService,
+    StaffScheduleService,
   ],
   exports: [
     ShiftRepository,
@@ -79,6 +82,7 @@ import { AppConfigService } from '../config';
     SchedulingConstraintService,
     ShiftService,
     AssignmentService,
+    StaffScheduleService,
   ],
 })
 export class SchedulingModule {}

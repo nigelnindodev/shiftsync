@@ -10,6 +10,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ShiftSkill } from './shift-skill.entity';
+import { ShiftTemplate } from './shift-template.entity';
+import { Schedule } from './schedule.entity';
+import { Location } from '../../staffing/entities/location.entity';
 
 export enum ShiftState {
   OPEN = 'OPEN',
@@ -25,19 +28,30 @@ export class Shift {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @ManyToOne(() => ShiftTemplate, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'template_id' })
   @Index()
+  template?: ShiftTemplate;
+
   @Column({ name: 'template_id', nullable: true })
   templateId?: number;
 
-  @ManyToOne('Schedule', 'shifts', { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => Schedule, (schedule) => schedule.shifts, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   @JoinColumn({ name: 'schedule_id' })
-  schedule?: import('./schedule.entity').Schedule;
-
   @Index()
+  schedule?: Schedule;
+
   @Column({ name: 'schedule_id', nullable: true })
   scheduleId?: number;
 
+  @ManyToOne(() => Location, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'location_id' })
   @Index()
+  location: Location;
+
   @Column({ name: 'location_id' })
   locationId: number;
 
@@ -54,7 +68,7 @@ export class Shift {
   })
   state: ShiftState;
 
-  @OneToMany('ShiftSkill', 'shift')
+  @OneToMany(() => ShiftSkill, (shiftSkill) => shiftSkill.shift)
   skills: ShiftSkill[];
 
   @CreateDateColumn({ name: 'created_at' })
