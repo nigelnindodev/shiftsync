@@ -523,6 +523,25 @@ describe('AssignmentService (Integration)', () => {
         assignmentService.requestSwap(assignment.id, staffE.id, staffA.id),
       ).rejects.toThrow('Maximum 3 pending swap/drop requests allowed');
     });
+
+    it('rejects when staff tries to swap another staff member assignment', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await expect(
+        assignmentService.requestSwap(assignment.id, staffB.id, staffB.id),
+      ).rejects.toThrow('You can only swap your own assignments');
+    });
   });
 
   describe('acceptSwap', () => {
@@ -577,6 +596,28 @@ describe('AssignmentService (Integration)', () => {
       await expect(
         assignmentService.acceptSwap(assignment.id, staffC.id),
       ).rejects.toThrow('You are not the target of this swap');
+    });
+
+    it('rejects when target staff lacks certification', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffA.id, location.id, skill.id);
+      // staffB is NOT certified
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_REQUESTED,
+        swapTargetId: staffB.id,
+      });
+
+      await expect(
+        assignmentService.acceptSwap(assignment.id, staffB.id),
+      ).rejects.toThrow('Constraint violations prevented swap acceptance');
     });
   });
 
@@ -685,7 +726,12 @@ describe('AssignmentService (Integration)', () => {
         .getRepository(Assignment)
         .update(assignmentA.id, { swapTargetId: assignmentB.id });
 
-      await assignmentService.approveSwapDrop(assignmentA.id, manager.id, true);
+      await assignmentService.approveSwapDrop(
+        assignmentA.id,
+        shiftSkill.id,
+        manager.id,
+        true,
+      );
 
       const updatedA = await dataSource
         .getRepository(Assignment)
@@ -733,6 +779,7 @@ describe('AssignmentService (Integration)', () => {
 
       await assignmentService.approveSwapDrop(
         assignmentA.id,
+        shiftSkill.id,
         manager.id,
         false,
       );
@@ -772,7 +819,12 @@ describe('AssignmentService (Integration)', () => {
         .getRepository(Assignment)
         .update(assignmentA.id, { swapTargetId: assignmentB.id });
 
-      await assignmentService.approveSwapDrop(assignmentA.id, manager.id, true);
+      await assignmentService.approveSwapDrop(
+        assignmentA.id,
+        shiftSkill.id,
+        manager.id,
+        true,
+      );
 
       const updatedA = await dataSource
         .getRepository(Assignment)
@@ -812,6 +864,7 @@ describe('AssignmentService (Integration)', () => {
 
       await assignmentService.approveSwapDrop(
         assignmentA.id,
+        shiftSkill.id,
         manager.id,
         false,
       );

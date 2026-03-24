@@ -3,7 +3,7 @@ export {
   ShiftSkillWithFill,
   ShiftWithSkillSlots,
 } from './shift.repository';
-export { AssignmentRepository } from './assignment.repository';
+export { AssignmentRepository, ACTIVE_STATES } from './assignment.repository';
 export { ScheduleRepository } from './schedule.repository';
 export { ShiftTemplateRepository } from './shift-template.repository';
 export { RecurringAssignmentRepository } from './recurring-assignment.repository';

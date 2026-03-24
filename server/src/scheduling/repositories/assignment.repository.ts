@@ -6,7 +6,7 @@ import { ShiftSkill } from '../entities/shift-skill.entity';
 import { Shift } from '../entities/shift.entity';
 import { Result } from 'true-myth';
 
-const ACTIVE_STATES: AssignmentState[] = [
+export const ACTIVE_STATES: AssignmentState[] = [
   AssignmentState.ASSIGNED,
   AssignmentState.SWAP_REQUESTED,
   AssignmentState.SWAP_PENDING_APPROVAL,
@@ -60,19 +60,12 @@ export class AssignmentRepository {
 
   async countPendingRequests(staffMemberId: number): Promise<number> {
     return this.repo
-      .count({
-        where: { staffMemberId },
-        // We need to use query builder for IN clause
+      .createQueryBuilder('a')
+      .where('a.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('a.state IN (:...states)', {
+        states: PENDING_SWAP_DROP_STATES,
       })
-      .then(() =>
-        this.repo
-          .createQueryBuilder('a')
-          .where('a.staff_member_id = :staffMemberId', { staffMemberId })
-          .andWhere('a.state IN (:...states)', {
-            states: PENDING_SWAP_DROP_STATES,
-          })
-          .getCount(),
-      );
+      .getCount();
   }
 
   async findPendingForShift(shiftId: number): Promise<Assignment[]> {

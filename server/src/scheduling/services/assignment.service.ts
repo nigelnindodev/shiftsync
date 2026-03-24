@@ -294,7 +294,12 @@ export class AssignmentService {
 
     const fullAssignment =
       await this.assignmentRepo.findByIdWithRelations(assignmentId);
-    const shiftId = fullAssignment?.shiftSkill?.shiftId ?? 0;
+    if (!fullAssignment?.shiftSkill?.shiftId) {
+      throw new InternalServerErrorException(
+        'Failed to load shift details for swap request',
+      );
+    }
+    const shiftId = fullAssignment.shiftSkill.shiftId;
 
     await this.eventRepo.append({
       aggregateType: 'Assignment',
@@ -450,7 +455,12 @@ export class AssignmentService {
 
     const fullAssignment =
       await this.assignmentRepo.findByIdWithRelations(assignmentId);
-    const shiftId = fullAssignment?.shiftSkill?.shiftId ?? 0;
+    if (!fullAssignment?.shiftSkill?.shiftId) {
+      throw new InternalServerErrorException(
+        'Failed to load shift details for drop request',
+      );
+    }
+    const shiftId = fullAssignment.shiftSkill.shiftId;
 
     await this.eventRepo.append({
       aggregateType: 'Assignment',
@@ -574,11 +584,17 @@ export class AssignmentService {
 
   async approveSwapDrop(
     assignmentId: number,
+    slotId: number,
     managerId: number,
     approved: boolean,
   ): Promise<void> {
     const assignment = await this.assignmentRepo.findById(assignmentId);
     if (!assignment) throw new NotFoundException('Assignment not found');
+    if (assignment.shiftSkillId !== slotId) {
+      throw new BadRequestException(
+        'Assignment does not belong to the specified skill slot',
+      );
+    }
 
     const isSwap =
       assignment.state === AssignmentState.SWAP_REQUESTED ||
@@ -595,7 +611,12 @@ export class AssignmentService {
 
     const fullAssignment =
       await this.assignmentRepo.findByIdWithRelations(assignmentId);
-    const shiftId = fullAssignment?.shiftSkill?.shiftId ?? 0;
+    if (!fullAssignment?.shiftSkill?.shiftId) {
+      throw new InternalServerErrorException(
+        'Failed to load shift details for swap/drop approval',
+      );
+    }
+    const shiftId = fullAssignment.shiftSkill.shiftId;
 
     if (approved) {
       await this.resolveApproved(assignmentId, assignment, shiftId, managerId);

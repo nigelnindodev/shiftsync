@@ -116,6 +116,7 @@ export class AssignmentController {
     const employee = req['employee'] as Employee;
     return this.assignmentService.approveSwapDrop(
       assignmentId,
+      slotId,
       employee.id,
       dto.approved,
     );
