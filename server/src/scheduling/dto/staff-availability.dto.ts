@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DayOfWeek } from '../../staffing/entities/staff-availability.entity';
@@ -22,6 +23,7 @@ export class UpsertAvailabilityDto {
     example: '09:00',
   })
   @IsString()
+  @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: 'Must be HH:MM format' })
   wallStartTime: string;
 
   @ApiProperty({
@@ -29,6 +31,7 @@ export class UpsertAvailabilityDto {
     example: '17:00',
   })
   @IsString()
+  @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: 'Must be HH:MM format' })
   wallEndTime: string;
 }
 
@@ -53,6 +56,7 @@ export class UpsertExceptionDto {
   })
   @IsOptional()
   @IsString()
+  @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: 'Must be HH:MM format' })
   wallStartTime?: string;
 
   @ApiPropertyOptional({
@@ -61,6 +65,7 @@ export class UpsertExceptionDto {
   })
   @IsOptional()
   @IsString()
+  @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: 'Must be HH:MM format' })
   wallEndTime?: string;
 }
 
@@ -85,7 +90,7 @@ export class StaffAvailabilityResponseDto {
   id: number;
 
   @ApiProperty({ enum: DayOfWeek, example: DayOfWeek.MON })
-  dayOfWeek: string;
+  dayOfWeek: DayOfWeek;
 
   @ApiProperty({ example: '09:00' })
   wallStartTime: string;

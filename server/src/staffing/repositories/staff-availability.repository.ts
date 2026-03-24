@@ -6,7 +6,7 @@ import {
   DayOfWeek,
 } from '../entities/staff-availability.entity';
 import { StaffAvailabilityException } from '../entities/staff-availability-exception.entity';
-import { Result } from 'true-myth';
+import { Maybe, Result } from 'true-myth';
 
 @Injectable()
 export class StaffAvailabilityRepository {
@@ -21,6 +21,15 @@ export class StaffAvailabilityRepository {
 
   async findByStaffMember(staffMemberId: number): Promise<StaffAvailability[]> {
     return this.availabilityRepo.find({ where: { staffMemberId } });
+  }
+
+  async findAvailabilityByIdAndStaffMember(
+    id: number,
+    staffMemberId: number,
+  ): Promise<Maybe<StaffAvailability>> {
+    return Maybe.of(
+      await this.availabilityRepo.findOneBy({ id, staffMemberId }),
+    );
   }
 
   async findExceptionsForDate(
@@ -44,6 +53,13 @@ export class StaffAvailabilityRepository {
       .andWhere('e.date <= :endDate', { endDate })
       .orderBy('e.date', 'ASC')
       .getMany();
+  }
+
+  async findExceptionByIdAndStaffMember(
+    id: number,
+    staffMemberId: number,
+  ): Promise<Maybe<StaffAvailabilityException>> {
+    return Maybe.of(await this.exceptionRepo.findOneBy({ id, staffMemberId }));
   }
 
   async upsertAvailability(

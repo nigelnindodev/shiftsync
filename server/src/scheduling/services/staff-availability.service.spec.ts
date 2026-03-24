@@ -80,11 +80,11 @@ describe('StaffAvailabilityService (Integration)', () => {
     return { user, employee };
   }
 
-  describe('getMyAvailability', () => {
+  describe('getStaffAvailability', () => {
     it('returns empty array when no windows exist', async () => {
       const { employee } = await createEmployee();
 
-      const result = await service.getMyAvailability(employee.id);
+      const result = await service.getStaffAvailability(employee.id);
 
       expect(result).toEqual([]);
     });
@@ -105,7 +105,7 @@ describe('StaffAvailabilityService (Integration)', () => {
         wallEndTime: '18:00',
       });
 
-      const result = await service.getMyAvailability(employee.id);
+      const result = await service.getStaffAvailability(employee.id);
 
       expect(result).toHaveLength(2);
       const days = result.map((r) => r.dayOfWeek);
@@ -114,11 +114,11 @@ describe('StaffAvailabilityService (Integration)', () => {
     });
   });
 
-  describe('upsertAvailability', () => {
+  describe('upsertStaffAvailability', () => {
     it('creates a new availability window', async () => {
       const { employee } = await createEmployee();
 
-      const result = await service.upsertAvailability(employee.id, {
+      const result = await service.upsertStaffAvailability(employee.id, {
         dayOfWeek: DayOfWeek.MON,
         wallStartTime: '09:00',
         wallEndTime: '17:00',
@@ -133,13 +133,13 @@ describe('StaffAvailabilityService (Integration)', () => {
     it('returns existing window when duplicate is upserted', async () => {
       const { employee } = await createEmployee();
 
-      const first = await service.upsertAvailability(employee.id, {
+      const first = await service.upsertStaffAvailability(employee.id, {
         dayOfWeek: DayOfWeek.MON,
         wallStartTime: '09:00',
         wallEndTime: '17:00',
       });
 
-      const second = await service.upsertAvailability(employee.id, {
+      const second = await service.upsertStaffAvailability(employee.id, {
         dayOfWeek: DayOfWeek.MON,
         wallStartTime: '09:00',
         wallEndTime: '17:00',
@@ -152,7 +152,7 @@ describe('StaffAvailabilityService (Integration)', () => {
       const { employee } = await createEmployee();
 
       await expect(
-        service.upsertAvailability(employee.id, {
+        service.upsertStaffAvailability(employee.id, {
           dayOfWeek: DayOfWeek.MON,
           wallStartTime: '17:00',
           wallEndTime: '09:00',
@@ -161,7 +161,7 @@ describe('StaffAvailabilityService (Integration)', () => {
     });
   });
 
-  describe('deleteAvailability', () => {
+  describe('deleteStaffAvailability', () => {
     it('deletes an existing availability window', async () => {
       const { employee } = await createEmployee();
 
@@ -172,9 +172,9 @@ describe('StaffAvailabilityService (Integration)', () => {
         wallEndTime: '17:00',
       });
 
-      await service.deleteAvailability(employee.id, avail.id);
+      await service.deleteStaffAvailability(employee.id, avail.id);
 
-      const windows = await service.getMyAvailability(employee.id);
+      const windows = await service.getStaffAvailability(employee.id);
       expect(windows).toEqual([]);
     });
 
@@ -182,12 +182,12 @@ describe('StaffAvailabilityService (Integration)', () => {
       const { employee } = await createEmployee();
 
       await expect(
-        service.deleteAvailability(employee.id, 99999),
+        service.deleteStaffAvailability(employee.id, 99999),
       ).rejects.toThrow('Availability window not found');
     });
   });
 
-  describe('getExceptions', () => {
+  describe('getStaffExceptions', () => {
     it('returns exceptions within date range', async () => {
       const { employee } = await createEmployee();
 
@@ -204,7 +204,7 @@ describe('StaffAvailabilityService (Integration)', () => {
         wallEndTime: '14:00',
       });
 
-      const result = await service.getExceptions(employee.id, {
+      const result = await service.getStaffExceptions(employee.id, {
         startDate: '2026-03-24',
         endDate: '2026-03-30',
       });
@@ -217,7 +217,7 @@ describe('StaffAvailabilityService (Integration)', () => {
     it('returns empty array when no exceptions exist', async () => {
       const { employee } = await createEmployee();
 
-      const result = await service.getExceptions(employee.id, {
+      const result = await service.getStaffExceptions(employee.id, {
         startDate: '2026-03-24',
         endDate: '2026-03-30',
       });
@@ -234,20 +234,31 @@ describe('StaffAvailabilityService (Integration)', () => {
         isAvailable: false,
       });
 
-      const result = await service.getExceptions(employee.id, {
+      const result = await service.getStaffExceptions(employee.id, {
         startDate: '2026-03-24',
         endDate: '2026-03-30',
       });
 
       expect(result).toEqual([]);
     });
+
+    it('returns empty array when startDate is after endDate', async () => {
+      const { employee } = await createEmployee();
+
+      const result = await service.getStaffExceptions(employee.id, {
+        startDate: '2026-03-30',
+        endDate: '2026-03-24',
+      });
+
+      expect(result).toEqual([]);
+    });
   });
 
-  describe('upsertException', () => {
+  describe('upsertStaffException', () => {
     it('creates a new exception', async () => {
       const { employee } = await createEmployee();
 
-      const result = await service.upsertException(employee.id, {
+      const result = await service.upsertStaffException(employee.id, {
         date: '2026-03-25',
         isAvailable: false,
       });
@@ -260,7 +271,7 @@ describe('StaffAvailabilityService (Integration)', () => {
     it('creates an exception with time bounds', async () => {
       const { employee } = await createEmployee();
 
-      const result = await service.upsertException(employee.id, {
+      const result = await service.upsertStaffException(employee.id, {
         date: '2026-03-25',
         isAvailable: true,
         wallStartTime: '10:00',
@@ -275,7 +286,7 @@ describe('StaffAvailabilityService (Integration)', () => {
       const { employee } = await createEmployee();
 
       await expect(
-        service.upsertException(employee.id, {
+        service.upsertStaffException(employee.id, {
           date: '2026-03-25',
           isAvailable: true,
           wallStartTime: '15:00',
@@ -285,7 +296,7 @@ describe('StaffAvailabilityService (Integration)', () => {
     });
   });
 
-  describe('deleteException', () => {
+  describe('deleteStaffException', () => {
     it('deletes an existing exception', async () => {
       const { employee } = await createEmployee();
 
@@ -297,9 +308,9 @@ describe('StaffAvailabilityService (Integration)', () => {
           isAvailable: false,
         });
 
-      await service.deleteException(employee.id, exception.id);
+      await service.deleteStaffException(employee.id, exception.id);
 
-      const exceptions = await service.getExceptions(employee.id, {
+      const exceptions = await service.getStaffExceptions(employee.id, {
         startDate: '2026-03-24',
         endDate: '2026-03-30',
       });
@@ -309,9 +320,9 @@ describe('StaffAvailabilityService (Integration)', () => {
     it('throws NotFoundException for non-existent exception', async () => {
       const { employee } = await createEmployee();
 
-      await expect(service.deleteException(employee.id, 99999)).rejects.toThrow(
-        'Availability exception not found',
-      );
+      await expect(
+        service.deleteStaffException(employee.id, 99999),
+      ).rejects.toThrow('Availability exception not found');
     });
   });
 });

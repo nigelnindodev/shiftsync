@@ -20,7 +20,7 @@ export class StaffAvailabilityService {
 
   constructor(private readonly availabilityRepo: StaffAvailabilityRepository) {}
 
-  async getMyAvailability(
+  async getStaffAvailability(
     staffMemberId: number,
   ): Promise<StaffAvailabilityResponseDto[]> {
     const windows =
@@ -34,7 +34,7 @@ export class StaffAvailabilityService {
     }));
   }
 
-  async upsertAvailability(
+  async upsertStaffAvailability(
     staffMemberId: number,
     dto: UpsertAvailabilityDto,
   ): Promise<StaffAvailabilityResponseDto> {
@@ -60,15 +60,17 @@ export class StaffAvailabilityService {
     };
   }
 
-  async deleteAvailability(
+  async deleteStaffAvailability(
     staffMemberId: number,
     availabilityId: number,
   ): Promise<void> {
-    const windows =
-      await this.availabilityRepo.findByStaffMember(staffMemberId);
-    const window = windows.find((w) => w.id === availabilityId);
+    const maybeWindow =
+      await this.availabilityRepo.findAvailabilityByIdAndStaffMember(
+        availabilityId,
+        staffMemberId,
+      );
 
-    if (!window) {
+    if (maybeWindow.isNothing) {
       throw new NotFoundException('Availability window not found');
     }
 
@@ -81,7 +83,7 @@ export class StaffAvailabilityService {
     }
   }
 
-  async getExceptions(
+  async getStaffExceptions(
     staffMemberId: number,
     query: AvailabilityExceptionsQueryDto,
   ): Promise<StaffAvailabilityExceptionResponseDto[]> {
@@ -100,12 +102,12 @@ export class StaffAvailabilityService {
     }));
   }
 
-  async upsertException(
+  async upsertStaffException(
     staffMemberId: number,
     dto: UpsertExceptionDto,
   ): Promise<StaffAvailabilityExceptionResponseDto> {
-    if (dto.wallStartTime || dto.wallEndTime) {
-      this.validateTimeRange(dto.wallStartTime!, dto.wallEndTime!);
+    if (dto.wallStartTime && dto.wallEndTime) {
+      this.validateTimeRange(dto.wallStartTime, dto.wallEndTime);
     }
 
     const result = await this.availabilityRepo.upsertException(
@@ -130,18 +132,17 @@ export class StaffAvailabilityService {
     };
   }
 
-  async deleteException(
+  async deleteStaffException(
     staffMemberId: number,
     exceptionId: number,
   ): Promise<void> {
-    const exceptions = await this.availabilityRepo.findExceptionsForDateRange(
-      staffMemberId,
-      '1970-01-01',
-      '9999-12-31',
-    );
-    const exception = exceptions.find((e) => e.id === exceptionId);
+    const maybeException =
+      await this.availabilityRepo.findExceptionByIdAndStaffMember(
+        exceptionId,
+        staffMemberId,
+      );
 
-    if (!exception) {
+    if (maybeException.isNothing) {
       throw new NotFoundException('Availability exception not found');
     }
 

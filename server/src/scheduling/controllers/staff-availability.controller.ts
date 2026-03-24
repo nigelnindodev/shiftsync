@@ -2,7 +2,10 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Put,
@@ -33,87 +36,110 @@ import {
 
 @ApiTags('staff-availability')
 @ApiBearerAuth()
-@Controller('staff/me/availability')
+@Controller('staff/availability')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StaffAvailabilityController {
   constructor(
     private readonly staffAvailabilityService: StaffAvailabilityService,
   ) {}
 
-  @Get()
+  @Get(':staffId')
   @Roles(EmployeeRole.STAFF, EmployeeRole.MANAGER, EmployeeRole.ADMIN)
   @ApiOperation({ summary: 'Get staff recurring availability windows' })
   @ApiResponse({ status: 200, type: [StaffAvailabilityResponseDto] })
-  async getMyAvailability(
+  async getStaffAvailability(
+    @Param('staffId', ParseIntPipe) staffId: number,
     @Req() req: Request,
   ): Promise<StaffAvailabilityResponseDto[]> {
     const employee = req['employee'] as Employee;
-    return this.staffAvailabilityService.getMyAvailability(employee.id);
+    if (employee.role === EmployeeRole.STAFF && employee.id !== staffId) {
+      throw new ForbiddenException(
+        'Staff can only view their own availability',
+      );
+    }
+    return this.staffAvailabilityService.getStaffAvailability(staffId);
   }
 
   @Put()
-  @Roles(EmployeeRole.STAFF, EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @Roles(EmployeeRole.STAFF)
   @ApiOperation({ summary: 'Upsert a recurring availability window' })
   @ApiResponse({ status: 200, type: StaffAvailabilityResponseDto })
-  async upsertAvailability(
+  async upsertStaffAvailability(
     @Req() req: Request,
     @Body() dto: UpsertAvailabilityDto,
   ): Promise<StaffAvailabilityResponseDto> {
     const employee = req['employee'] as Employee;
-    return this.staffAvailabilityService.upsertAvailability(employee.id, dto);
+    return this.staffAvailabilityService.upsertStaffAvailability(
+      employee.id,
+      dto,
+    );
   }
 
-  @Delete(':id')
-  @Roles(EmployeeRole.STAFF, EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @Delete(':availabilityId')
+  @Roles(EmployeeRole.STAFF)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a recurring availability window' })
   @ApiResponse({ status: 204 })
-  async deleteAvailability(
+  async deleteStaffAvailability(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('availabilityId', ParseIntPipe) availabilityId: number,
   ): Promise<void> {
     const employee = req['employee'] as Employee;
-    return this.staffAvailabilityService.deleteAvailability(employee.id, id);
+    return this.staffAvailabilityService.deleteStaffAvailability(
+      employee.id,
+      availabilityId,
+    );
   }
 
-  @Get('exceptions')
+  @Get(':staffId/exceptions')
   @Roles(EmployeeRole.STAFF, EmployeeRole.MANAGER, EmployeeRole.ADMIN)
   @ApiOperation({ summary: 'Get availability exceptions for a date range' })
   @ApiResponse({
     status: 200,
     type: [StaffAvailabilityExceptionResponseDto],
   })
-  async getExceptions(
+  async getStaffExceptions(
+    @Param('staffId', ParseIntPipe) staffId: number,
     @Req() req: Request,
     @Query() query: AvailabilityExceptionsQueryDto,
   ): Promise<StaffAvailabilityExceptionResponseDto[]> {
     const employee = req['employee'] as Employee;
-    return this.staffAvailabilityService.getExceptions(employee.id, query);
+    if (employee.role === EmployeeRole.STAFF && employee.id !== staffId) {
+      throw new ForbiddenException(
+        'Staff can only view their own availability',
+      );
+    }
+    return this.staffAvailabilityService.getStaffExceptions(staffId, query);
   }
 
   @Put('exceptions')
-  @Roles(EmployeeRole.STAFF, EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @Roles(EmployeeRole.STAFF)
   @ApiOperation({ summary: 'Upsert a one-off availability exception' })
   @ApiResponse({
     status: 200,
     type: StaffAvailabilityExceptionResponseDto,
   })
-  async upsertException(
+  async upsertStaffException(
     @Req() req: Request,
     @Body() dto: UpsertExceptionDto,
   ): Promise<StaffAvailabilityExceptionResponseDto> {
     const employee = req['employee'] as Employee;
-    return this.staffAvailabilityService.upsertException(employee.id, dto);
+    return this.staffAvailabilityService.upsertStaffException(employee.id, dto);
   }
 
-  @Delete('exceptions/:id')
-  @Roles(EmployeeRole.STAFF, EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @Delete('exceptions/:exceptionId')
+  @Roles(EmployeeRole.STAFF)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an availability exception' })
   @ApiResponse({ status: 204 })
-  async deleteException(
+  async deleteStaffException(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('exceptionId', ParseIntPipe) exceptionId: number,
   ): Promise<void> {
     const employee = req['employee'] as Employee;
-    return this.staffAvailabilityService.deleteException(employee.id, id);
+    return this.staffAvailabilityService.deleteStaffException(
+      employee.id,
+      exceptionId,
+    );
   }
 }
