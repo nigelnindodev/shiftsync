@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './http/users.controller';
+import { TestingController } from './http/testing.controller';
 import { UsersMicroserviceController } from './microservice/users-microservice.controller';
 import { UsersClientModule } from './users-client.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -17,6 +18,10 @@ import { SecurityModule } from 'src/security/security.module';
     UsersClientModule,
   ],
   providers: [UsersService, UsersRepository, EmployeeRepository],
-  controllers: [UsersController, UsersMicroserviceController],
+  controllers: [
+    UsersController,
+    UsersMicroserviceController,
+    TestingController,
+  ],
 })
 export class UsersModule {}
