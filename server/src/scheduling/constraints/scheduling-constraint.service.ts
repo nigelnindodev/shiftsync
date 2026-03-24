@@ -10,6 +10,7 @@ import {
   AssignmentRepository,
   ShiftRepository,
   ShiftSkillRepository,
+  ACTIVE_STATES,
 } from '../repositories';
 import { Employee } from '../../users/entity/employee.entity';
 
@@ -255,6 +256,7 @@ export class SchedulingConstraintService {
       shiftStartTime.getTime() - 14 * 24 * 60 * 60 * 1000,
     );
 
+    const stateList = ACTIVE_STATES.map((s) => `'${s}'`).join(', ');
     const rawResult: unknown = await this.dataSource.query(
       `
       SELECT assignments.id, shifts.end_time AS "priorShiftEnd"
@@ -262,7 +264,7 @@ export class SchedulingConstraintService {
       JOIN shift_skills ss ON ss.id = assignments.shift_skill_id
       JOIN shifts ON shifts.id = ss.shift_id
       WHERE assignments.staff_member_id = $1
-        AND assignments.state IN ('ASSIGNED', 'SWAP_REQUESTED', 'SWAP_PENDING_APPROVAL')
+        AND assignments.state IN (${stateList})
         AND shifts.end_time <= $2
         AND shifts.end_time >= $3
       ORDER BY shifts.end_time DESC

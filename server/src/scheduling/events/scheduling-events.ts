@@ -10,6 +10,14 @@ export const SchedulingEventPatterns = {
   SHIFT_STATE_CHANGED: 'scheduling.shift.state_changed',
   ASSIGNMENT_CREATED: 'scheduling.assignment.created',
   ASSIGNMENT_REMOVED: 'scheduling.assignment.removed',
+  SWAP_REQUESTED: 'scheduling.assignment.swap_requested',
+  SWAP_ACCEPTED: 'scheduling.assignment.swap_accepted',
+  SWAP_APPROVED: 'scheduling.assignment.swap_approved',
+  SWAP_REJECTED: 'scheduling.assignment.swap_rejected',
+  DROP_REQUESTED: 'scheduling.assignment.drop_requested',
+  DROP_CLAIMED: 'scheduling.assignment.drop_claimed',
+  DROP_APPROVED: 'scheduling.assignment.drop_approved',
+  DROP_REJECTED: 'scheduling.assignment.drop_rejected',
 } as const;
 
 export interface ShiftCreatedEvent {
@@ -52,5 +60,72 @@ export interface AssignmentRemovedEvent {
   staffMemberId: number;
   removedByManagerId?: number;
   reason: string;
+  timestamp: string;
+}
+
+export interface SwapRequestedEvent {
+  assignmentId: number;
+  staffMemberId: number;
+  targetStaffMemberId: number;
+  shiftSkillId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface SwapAcceptedEvent {
+  originalAssignmentId: number;
+  newAssignmentId: number;
+  staffMemberId: number;
+  shiftSkillId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface SwapApprovedEvent {
+  originalAssignmentId: number;
+  newAssignmentId: number;
+  approvedByManagerId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface SwapRejectedEvent {
+  originalAssignmentId: number;
+  newAssignmentId: number;
+  rejectedByManagerId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface DropRequestedEvent {
+  assignmentId: number;
+  staffMemberId: number;
+  shiftSkillId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface DropClaimedEvent {
+  originalAssignmentId: number;
+  newAssignmentId: number;
+  claimedByStaffId: number;
+  shiftSkillId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface DropApprovedEvent {
+  originalAssignmentId: number;
+  newAssignmentId: number;
+  approvedByManagerId: number;
+  shiftId: number;
+  timestamp: string;
+}
+
+export interface DropRejectedEvent {
+  originalAssignmentId: number;
+  newAssignmentId: number;
+  rejectedByManagerId: number;
+  shiftId: number;
   timestamp: string;
 }

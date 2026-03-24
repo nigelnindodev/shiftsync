@@ -421,4 +421,463 @@ describe('AssignmentService (Integration)', () => {
       expect(result[0].staffMemberId).toBe(eligibleEmp.id);
     });
   });
+
+  describe('requestSwap', () => {
+    it('transitions assignment to SWAP_REQUESTED and emits event', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffA.id, location.id, skill.id);
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await assignmentService.requestSwap(assignment.id, staffB.id, staffA.id);
+
+      const updated = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignment.id });
+      expect(updated?.state).toBe(AssignmentState.SWAP_REQUESTED);
+      expect(updated?.swapTargetId).toBe(staffB.id);
+
+      const events = await dataSource.getRepository(DomainEvent).find({
+        where: { aggregateId: assignment.id },
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe(SchedulingEventPatterns.SWAP_REQUESTED);
+    });
+
+    it('rejects when assignment is not ASSIGNED', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_REQUESTED,
+      });
+
+      await expect(
+        assignmentService.requestSwap(assignment.id, staffB.id, staffA.id),
+      ).rejects.toThrow('Can only request swap on ASSIGNED assignments');
+    });
+
+    it('rejects when max pending requests reached', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: staffC } = await createEmployee('Staff C');
+      const { employee: staffD } = await createEmployee('Staff D');
+      const { employee: staffE } = await createEmployee('Staff E');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffA.id, location.id, skill.id);
+
+      // Create 3 shifts to assign staffA to
+      const shifts: Array<{ shift: Shift; shiftSkill: ShiftSkillEntity }> = [];
+      for (let i = 0; i < 4; i++) {
+        const shift = await dataSource.getRepository(Shift).save({
+          locationId: location.id,
+          startTime: new Date(`2026-03-${24 + i}T10:00:00Z`),
+          endTime: new Date(`2026-03-${24 + i}T18:00:00Z`),
+          state: ShiftState.OPEN,
+        });
+        const shiftSkill = await dataSource
+          .getRepository(ShiftSkillEntity)
+          .save({
+            shiftId: shift.id,
+            skillId: skill.id,
+            headcount: 1,
+          });
+        shifts.push({ shift, shiftSkill });
+      }
+
+      // Create 3 pending swap requests (max)
+      const targets = [staffB, staffC, staffD];
+      for (let i = 0; i < 3; i++) {
+        await dataSource.getRepository(Assignment).save({
+          staffMemberId: staffA.id,
+          shiftSkillId: shifts[i].shiftSkill.id,
+          state: AssignmentState.SWAP_REQUESTED,
+          swapTargetId: targets[i].id,
+        });
+      }
+
+      // 4th should fail
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shifts[3].shiftSkill.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await expect(
+        assignmentService.requestSwap(assignment.id, staffE.id, staffA.id),
+      ).rejects.toThrow('Maximum 3 pending swap/drop requests allowed');
+    });
+
+    it('rejects when staff tries to swap another staff member assignment', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await expect(
+        assignmentService.requestSwap(assignment.id, staffB.id, staffB.id),
+      ).rejects.toThrow('You can only swap your own assignments');
+    });
+  });
+
+  describe('acceptSwap', () => {
+    it('creates partner assignment and transitions both to SWAP_PENDING_APPROVAL', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffA.id, location.id, skill.id);
+      await certifyEmployee(staffB.id, location.id, skill.id);
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_REQUESTED,
+        swapTargetId: staffB.id,
+      });
+
+      await assignmentService.acceptSwap(assignmentA.id, staffB.id);
+
+      const updatedA = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentA.id });
+      expect(updatedA?.state).toBe(AssignmentState.SWAP_PENDING_APPROVAL);
+
+      const assignments = await dataSource.getRepository(Assignment).find({
+        where: { staffMemberId: staffB.id, shiftSkillId: shiftSkill.id },
+      });
+      expect(assignments).toHaveLength(1);
+      expect(assignments[0].state).toBe(AssignmentState.SWAP_PENDING_APPROVAL);
+      expect(assignments[0].swapTargetId).toBe(assignmentA.id);
+    });
+
+    it('rejects when not the swap target', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: staffC } = await createEmployee('Staff C');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_REQUESTED,
+        swapTargetId: staffB.id,
+      });
+
+      await expect(
+        assignmentService.acceptSwap(assignment.id, staffC.id),
+      ).rejects.toThrow('You are not the target of this swap');
+    });
+
+    it('rejects when target staff lacks certification', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffA.id, location.id, skill.id);
+      // staffB is NOT certified
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_REQUESTED,
+        swapTargetId: staffB.id,
+      });
+
+      await expect(
+        assignmentService.acceptSwap(assignment.id, staffB.id),
+      ).rejects.toThrow('Constraint violations prevented swap acceptance');
+    });
+  });
+
+  describe('requestDrop', () => {
+    it('transitions assignment to DROP_REQUESTED and emits event', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await assignmentService.requestDrop(assignment.id, staffA.id);
+
+      const updated = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignment.id });
+      expect(updated?.state).toBe(AssignmentState.DROP_REQUESTED);
+
+      const events = await dataSource.getRepository(DomainEvent).find({
+        where: { aggregateId: assignment.id },
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe(SchedulingEventPatterns.DROP_REQUESTED);
+    });
+  });
+
+  describe('claimDrop', () => {
+    it('creates partner assignment and transitions to DROP_PENDING_APPROVAL', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffB.id, location.id, skill.id);
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.DROP_REQUESTED,
+      });
+
+      await assignmentService.claimDrop(assignmentA.id, staffB.id);
+
+      const updatedA = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentA.id });
+      expect(updatedA?.state).toBe(AssignmentState.DROP_REQUESTED);
+      expect(updatedA?.swapTargetId).toBeDefined();
+
+      const assignments = await dataSource.getRepository(Assignment).find({
+        where: { staffMemberId: staffB.id, shiftSkillId: shiftSkill.id },
+      });
+      expect(assignments).toHaveLength(1);
+      expect(assignments[0].state).toBe(AssignmentState.DROP_PENDING_APPROVAL);
+      expect(assignments[0].swapTargetId).toBe(assignmentA.id);
+    });
+
+    it('rejects when staff tries to claim own drop', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.DROP_REQUESTED,
+      });
+
+      await expect(
+        assignmentService.claimDrop(assignment.id, staffA.id),
+      ).rejects.toThrow('Cannot claim your own drop request');
+    });
+  });
+
+  describe('approveSwapDrop', () => {
+    it('approves drop: cancels original, assigns claimer', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: manager } = await createEmployee('Manager');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.DROP_REQUESTED,
+      });
+      const assignmentB = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffB.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.DROP_PENDING_APPROVAL,
+        swapTargetId: assignmentA.id,
+      });
+      await dataSource
+        .getRepository(Assignment)
+        .update(assignmentA.id, { swapTargetId: assignmentB.id });
+
+      await assignmentService.approveSwapDrop(
+        assignmentA.id,
+        shiftSkill.id,
+        manager.id,
+        true,
+      );
+
+      const updatedA = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentA.id });
+      expect(updatedA?.state).toBe(AssignmentState.CANCELLED);
+
+      const updatedB = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentB.id });
+      expect(updatedB?.state).toBe(AssignmentState.ASSIGNED);
+
+      const events = await dataSource.getRepository(DomainEvent).find({
+        where: { aggregateId: assignmentA.id },
+      });
+      expect(
+        events.some(
+          (e) => e.eventType === SchedulingEventPatterns.DROP_APPROVED,
+        ),
+      ).toBe(true);
+    });
+
+    it('rejects drop: cancels claimer, reverts original to DROP_REQUESTED', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: manager } = await createEmployee('Manager');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.DROP_REQUESTED,
+      });
+      const assignmentB = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffB.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.DROP_PENDING_APPROVAL,
+        swapTargetId: assignmentA.id,
+      });
+      await dataSource
+        .getRepository(Assignment)
+        .update(assignmentA.id, { swapTargetId: assignmentB.id });
+
+      await assignmentService.approveSwapDrop(
+        assignmentA.id,
+        shiftSkill.id,
+        manager.id,
+        false,
+      );
+
+      const updatedA = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentA.id });
+      expect(updatedA?.state).toBe(AssignmentState.DROP_REQUESTED);
+
+      const updatedB = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentB.id });
+      expect(updatedB?.state).toBe(AssignmentState.CANCELLED);
+    });
+
+    it('approves swap: cancels original, assigns partner', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: manager } = await createEmployee('Manager');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_PENDING_APPROVAL,
+      });
+      const assignmentB = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffB.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_PENDING_APPROVAL,
+        swapTargetId: assignmentA.id,
+      });
+      await dataSource
+        .getRepository(Assignment)
+        .update(assignmentA.id, { swapTargetId: assignmentB.id });
+
+      await assignmentService.approveSwapDrop(
+        assignmentA.id,
+        shiftSkill.id,
+        manager.id,
+        true,
+      );
+
+      const updatedA = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentA.id });
+      expect(updatedA?.state).toBe(AssignmentState.CANCELLED);
+
+      const updatedB = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentB.id });
+      expect(updatedB?.state).toBe(AssignmentState.ASSIGNED);
+      expect(updatedB?.swapTargetId).toBeNull();
+    });
+
+    it('rejects swap: restores original to ASSIGNED, cancels partner', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const { employee: manager } = await createEmployee('Manager');
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_PENDING_APPROVAL,
+      });
+      const assignmentB = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffB.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_PENDING_APPROVAL,
+        swapTargetId: assignmentA.id,
+      });
+      await dataSource
+        .getRepository(Assignment)
+        .update(assignmentA.id, { swapTargetId: assignmentB.id });
+
+      await assignmentService.approveSwapDrop(
+        assignmentA.id,
+        shiftSkill.id,
+        manager.id,
+        false,
+      );
+
+      const updatedA = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentA.id });
+      expect(updatedA?.state).toBe(AssignmentState.ASSIGNED);
+
+      const updatedB = await dataSource
+        .getRepository(Assignment)
+        .findOneBy({ id: assignmentB.id });
+      expect(updatedB?.state).toBe(AssignmentState.CANCELLED);
+    });
+  });
 });

@@ -6,6 +6,20 @@ import { ShiftSkill } from '../entities/shift-skill.entity';
 import { Shift } from '../entities/shift.entity';
 import { Result } from 'true-myth';
 
+export const ACTIVE_STATES: AssignmentState[] = [
+  AssignmentState.ASSIGNED,
+  AssignmentState.SWAP_REQUESTED,
+  AssignmentState.SWAP_PENDING_APPROVAL,
+  AssignmentState.DROP_PENDING_APPROVAL,
+];
+
+const PENDING_SWAP_DROP_STATES: AssignmentState[] = [
+  AssignmentState.SWAP_REQUESTED,
+  AssignmentState.SWAP_PENDING_APPROVAL,
+  AssignmentState.DROP_REQUESTED,
+  AssignmentState.DROP_PENDING_APPROVAL,
+];
+
 @Injectable()
 export class AssignmentRepository {
   private readonly logger = new Logger(AssignmentRepository.name);
@@ -20,6 +34,13 @@ export class AssignmentRepository {
 
   async findById(id: number): Promise<Assignment | null> {
     return this.repo.findOneBy({ id });
+  }
+
+  async findByIdWithRelations(id: number): Promise<Assignment | null> {
+    return this.repo.findOne({
+      where: { id },
+      relations: ['shiftSkill', 'shiftSkill.shift'],
+    });
   }
 
   async findByShiftSkillId(shiftSkillId: number): Promise<Assignment[]> {
@@ -37,6 +58,27 @@ export class AssignmentRepository {
     });
   }
 
+  async countPendingRequests(staffMemberId: number): Promise<number> {
+    return this.repo
+      .createQueryBuilder('a')
+      .where('a.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('a.state IN (:...states)', {
+        states: PENDING_SWAP_DROP_STATES,
+      })
+      .getCount();
+  }
+
+  async findPendingForShift(shiftId: number): Promise<Assignment[]> {
+    return this.repo
+      .createQueryBuilder('a')
+      .innerJoin('a.shiftSkill', 'ss')
+      .where('ss.shift_id = :shiftId', { shiftId })
+      .andWhere('a.state IN (:...states)', {
+        states: PENDING_SWAP_DROP_STATES,
+      })
+      .getMany();
+  }
+
   async findOverlappingAssignments(
     staffMemberId: number,
     shiftStartTime: Date,
@@ -47,13 +89,7 @@ export class AssignmentRepository {
       .innerJoin('a.shiftSkill', 'ss')
       .innerJoin('ss.shift', 's')
       .where('a.staff_member_id = :staffMemberId', { staffMemberId })
-      .andWhere('a.state IN (:...states)', {
-        states: [
-          AssignmentState.ASSIGNED,
-          AssignmentState.SWAP_REQUESTED,
-          AssignmentState.SWAP_PENDING_APPROVAL,
-        ],
-      })
+      .andWhere('a.state IN (:...states)', { states: ACTIVE_STATES })
       .andWhere('s.start_time < :shiftEndTime', { shiftEndTime })
       .andWhere('s.end_time > :shiftStartTime', { shiftStartTime })
       .getMany();
@@ -102,6 +138,7 @@ export class AssignmentRepository {
         [staffMemberId],
       );
 
+      const stateList = ACTIVE_STATES.map((s) => `'${s}'`).join(', ');
       const conflicts: { id: number }[] = await queryRunner.manager.query(
         `
         SELECT assignments.id
@@ -109,11 +146,7 @@ export class AssignmentRepository {
         JOIN shift_skills ss ON ss.id = assignments.shift_skill_id
         JOIN shifts s ON s.id = ss.shift_id
         WHERE assignments.staff_member_id = $1
-          AND assignments.state IN (
-            'ASSIGNED',
-            'SWAP_REQUESTED',
-            'SWAP_PENDING_APPROVAL'
-          )
+          AND assignments.state IN (${stateList})
           AND s.start_time < $2
           AND s.end_time > $3
         FOR UPDATE
@@ -174,6 +207,29 @@ export class AssignmentRepository {
     }
   }
 
+  async updateStateWithSwapTarget(
+    id: number,
+    state: AssignmentState,
+    swapTargetId: number | null,
+  ): Promise<Result<void, Error>> {
+    try {
+      const updateData: Record<string, unknown> = { state };
+      updateData['swapTargetId'] = swapTargetId;
+      const res = await this.repo.update(id, updateData);
+      if (res.affected === 0) {
+        return Result.err(
+          new Error(`Assignment ${id} not found or state unchanged`),
+        );
+      }
+      return Result.ok(undefined);
+    } catch (e) {
+      this.logger.error(`Failed to update assignment ${id}`, e);
+      return Result.err(
+        e instanceof Error ? e : new Error('Failed to update assignment'),
+      );
+    }
+  }
+
   async cancelPendingForShift(shiftId: number): Promise<Result<void, Error>> {
     try {
       await this.repo
@@ -185,10 +241,7 @@ export class AssignmentRepository {
           { shiftId },
         )
         .andWhere('state IN (:...states)', {
-          states: [
-            AssignmentState.SWAP_REQUESTED,
-            AssignmentState.SWAP_PENDING_APPROVAL,
-          ],
+          states: PENDING_SWAP_DROP_STATES,
         })
         .execute();
       return Result.ok(undefined);

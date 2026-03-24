@@ -2,9 +2,10 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
-  IsOptional,
+  IsNotEmpty,
   IsString,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DayOfWeek } from '../../staffing/entities/staff-availability.entity';
@@ -54,7 +55,8 @@ export class UpsertExceptionDto {
     description: 'Start time in local format (HH:MM), required if isAvailable',
     example: '10:00',
   })
-  @IsOptional()
+  @ValidateIf((o: Record<string, unknown>) => o.isAvailable === true)
+  @IsNotEmpty()
   @IsString()
   @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: 'Must be HH:MM format' })
   wallStartTime?: string;
@@ -63,7 +65,8 @@ export class UpsertExceptionDto {
     description: 'End time in local format (HH:MM), required if isAvailable',
     example: '15:00',
   })
-  @IsOptional()
+  @ValidateIf((o: Record<string, unknown>) => o.isAvailable === true)
+  @IsNotEmpty()
   @IsString()
   @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { message: 'Must be HH:MM format' })
   wallEndTime?: string;
