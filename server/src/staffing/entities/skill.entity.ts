@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { StaffSkill } from './staff-skill.entity';
+import { ShiftSkill } from '../../scheduling/entities/shift-skill.entity';
 
 @Entity('skills')
 export class Skill {
@@ -23,6 +24,9 @@ export class Skill {
 
   @OneToMany(() => StaffSkill, (staffSkill) => staffSkill.skill)
   staffSkills: StaffSkill[];
+
+  @OneToMany(() => ShiftSkill, (shiftSkill) => shiftSkill.skill)
+  shiftSkills: ShiftSkill[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

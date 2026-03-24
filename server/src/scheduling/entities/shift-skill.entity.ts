@@ -13,6 +13,7 @@ import {
 import { Min } from 'class-validator';
 import { Assignment } from './assignment.entity';
 import { Shift } from './shift.entity';
+import { Skill } from '../../staffing/entities/skill.entity';
 
 @Entity('shift_skills')
 @Check('headcount_positive', '"headcount" > 0')
@@ -27,6 +28,11 @@ export class ShiftSkill {
 
   @Column({ name: 'shift_id' })
   shiftId: number;
+
+  @ManyToOne(() => Skill, (skill) => skill.shiftSkills)
+  @JoinColumn({ name: 'skill_id' })
+  @Index()
+  skill?: Skill;
 
   @Column({ name: 'skill_id' })
   skillId: number;

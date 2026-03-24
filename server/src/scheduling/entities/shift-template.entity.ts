@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { ShiftTemplateSkill } from './shift-template-skill.entity';
 import { RecurringAssignment } from './recurring-assignment.entity';
+import { Shift } from './shift.entity';
 
 @Entity('shift_templates')
 export class ShiftTemplate {
@@ -35,6 +36,9 @@ export class ShiftTemplate {
 
   @Column({ name: 'effective_to', type: 'timestamptz', nullable: true })
   effectiveTo?: Date;
+
+  @OneToMany(() => Shift, (shift) => shift.template)
+  shifts: Shift[];
 
   @OneToMany(() => ShiftTemplateSkill, (skill) => skill.template)
   skills: ShiftTemplateSkill[];

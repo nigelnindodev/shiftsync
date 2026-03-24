@@ -242,4 +242,51 @@ export class AssignmentRepository {
 
     return result?.totalHours ? parseFloat(result.totalHours) : 0;
   }
+
+  async findByStaffMemberAndDateRangeWithDetails(
+    staffMemberId: number,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<
+    Array<
+      Assignment & {
+        shiftSkill: ShiftSkill & {
+          shift: Shift & {
+            location: { id: number; name: string; timezone: string };
+          };
+          skill: { id: number; name: string };
+        };
+      }
+    >
+  > {
+    return this.repo
+      .createQueryBuilder('a')
+      .innerJoinAndSelect('a.shiftSkill', 'ss')
+      .innerJoinAndSelect('ss.shift', 's')
+      .innerJoinAndSelect('ss.skill', 'sk')
+      .innerJoinAndSelect('s.location', 'l')
+      .where('a.staff_member_id = :staffMemberId', { staffMemberId })
+      .andWhere('s.start_time <= :endDate', { endDate })
+      .andWhere('s.end_time >= :startDate', { startDate })
+      .andWhere('a.state NOT IN (:...excludedStates)', {
+        excludedStates: [
+          AssignmentState.CANCELLED,
+          AssignmentState.NO_SHOW,
+          AssignmentState.COMPLETED,
+        ],
+      })
+      .orderBy('s.start_time', 'ASC')
+      .getMany() as Promise<
+      Array<
+        Assignment & {
+          shiftSkill: ShiftSkill & {
+            shift: Shift & {
+              location: { id: number; name: string; timezone: string };
+            };
+            skill: { id: number; name: string };
+          };
+        }
+      >
+    >;
+  }
 }
