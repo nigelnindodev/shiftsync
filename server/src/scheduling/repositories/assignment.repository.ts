@@ -342,4 +342,63 @@ export class AssignmentRepository {
       >
     >;
   }
+
+  async findPendingForLocation(locationId: number): Promise<
+    Array<{
+      assignmentId: number;
+      staffMemberId: number;
+      staffName: string;
+      state: string;
+      shiftId: number;
+      startTime: Date;
+      endTime: Date;
+      locationId: number;
+      locationName: string;
+      skillName: string;
+      swapTargetName: string | null;
+    }>
+  > {
+    const results: unknown = await this.repo.manager.query(
+      `
+      SELECT
+        a.id AS "assignmentId",
+        a.staff_member_id AS "staffMemberId",
+        eu.name AS "staffName",
+        a.state,
+        s.id AS "shiftId",
+        s.start_time AS "startTime",
+        s.end_time AS "endTime",
+        l.id AS "locationId",
+        l.name AS "locationName",
+        sk.name AS "skillName",
+        su.name AS "swapTargetName"
+      FROM assignments a
+      JOIN shift_skills ss ON a.shift_skill_id = ss.id
+      JOIN shifts s ON ss.shift_id = s.id
+      JOIN locations l ON s.location_id = l.id
+      JOIN skills sk ON ss.skill_id = sk.id
+      JOIN employee e ON a.staff_member_id = e.id
+      JOIN users eu ON e.external_id = eu.external_id
+      LEFT JOIN employee se ON a.swap_target_id = se.id
+      LEFT JOIN users su ON se.external_id = su.external_id
+      WHERE l.id = $1
+        AND a.state = ANY($2)
+      ORDER BY s.start_time ASC
+      `,
+      [locationId, PENDING_SWAP_DROP_STATES],
+    );
+    return (results as Array<Record<string, unknown>>).map((r) => ({
+      assignmentId: r.assignmentId as number,
+      staffMemberId: r.staffMemberId as number,
+      staffName: r.staffName as string,
+      state: r.state as string,
+      shiftId: r.shiftId as number,
+      startTime: r.startTime as Date,
+      endTime: r.endTime as Date,
+      locationId: r.locationId as number,
+      locationName: r.locationName as string,
+      skillName: r.skillName as string,
+      swapTargetName: r.swapTargetName as string | null,
+    }));
+  }
 }

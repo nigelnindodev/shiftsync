@@ -880,4 +880,77 @@ describe('AssignmentService (Integration)', () => {
       expect(updatedB?.state).toBe(AssignmentState.CANCELLED);
     });
   });
+
+  describe('getPendingApprovalsForLocation', () => {
+    it('returns pending swap/drop assignments for the given location', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Test Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+      const skill = await dataSource.getRepository(Skill).save({
+        name: 'bartender' + Date.now(),
+        isActive: true,
+      });
+      const user = await dataSource.getRepository(User).save({
+        email: 'test-' + Date.now() + '@test.com',
+        name: 'Test Employee',
+      });
+      const employee = await dataSource.getRepository(Employee).save({
+        externalId: user.externalId,
+        role: EmployeeRole.STAFF,
+        homeTimezone: 'America/New_York',
+      });
+
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-25T09:00:00Z'),
+        endTime: new Date('2026-03-25T17:00:00Z'),
+        state: ShiftState.OPEN,
+      });
+      const shiftSkill = await dataSource.getRepository(ShiftSkillEntity).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 1,
+      });
+
+      // Assignment with pending swap state
+      await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: employee.id,
+        state: AssignmentState.SWAP_PENDING_APPROVAL,
+      });
+
+      // Regular assignment — should not appear
+      await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: employee.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      const result = await assignmentService.getPendingApprovalsForLocation(
+        location.id,
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].staffName).toBe('Test Employee');
+      expect(result[0].state).toBe('SWAP_PENDING_APPROVAL');
+      expect(result[0].locationName).toBe(location.name);
+      expect(result[0].skillName).toBe(skill.name);
+      expect(result[0].shiftDate).toBe('2026-03-25');
+      expect(result[0].shiftTime).toBe('09:00 - 17:00');
+    });
+
+    it('returns empty array when no pending approvals exist', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Empty Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+
+      const result = await assignmentService.getPendingApprovalsForLocation(
+        location.id,
+      );
+
+      expect(result).toHaveLength(0);
+    });
+  });
 });

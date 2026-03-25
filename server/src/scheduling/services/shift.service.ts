@@ -4,7 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ShiftRepository, ShiftWithSkillSlots } from '../repositories';
+import {
+  ShiftRepository,
+  ShiftWithSkillSlots,
+  ShiftSkillWithFill,
+} from '../repositories';
 import { SkillRepository } from '../../staffing/repositories';
 import { DomainEventRepository } from '../repositories';
 import { ShiftState } from '../entities/shift.entity';
@@ -107,6 +111,52 @@ export class ShiftService {
       throw new NotFoundException(`Shift ${shiftId} not found`);
     }
     return maybeShift.value;
+  }
+
+  async getShiftById(shiftId: number): Promise<ShiftWithSkillSlots> {
+    return this.getShiftSkillSlots(shiftId);
+  }
+
+  async getShiftsByLocationAndDateRange(
+    locationId: number,
+    startDate: string,
+    endDate: string,
+  ): Promise<
+    Array<{
+      id: number;
+      locationId: number;
+      startTime: Date;
+      endTime: Date;
+      state: string;
+      skills: ShiftSkillWithFill[];
+    }>
+  > {
+    const shifts = await this.shiftRepo.findByLocationAndDateRange(
+      locationId,
+      new Date(startDate),
+      new Date(endDate),
+    );
+
+    const result: Array<{
+      id: number;
+      locationId: number;
+      startTime: Date;
+      endTime: Date;
+      state: string;
+      skills: ShiftSkillWithFill[];
+    }> = [];
+    for (const shift of shifts) {
+      const skills = await this.shiftRepo.getSkillSlotsWithFillState(shift.id);
+      result.push({
+        id: shift.id,
+        locationId: shift.locationId,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        state: shift.state,
+        skills,
+      });
+    }
+    return result;
   }
 
   async cancelShift(shiftId: number, managerId?: number): Promise<void> {

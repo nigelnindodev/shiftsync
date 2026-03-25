@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -24,14 +25,57 @@ import { Roles } from '../../security/decorators/roles.decorator';
 import { EmployeeRole } from '../../users/user.types';
 import { Employee } from '../../users/entity/employee.entity';
 import { ShiftService } from '../services/shift.service';
+import { SchedulingReferenceService } from '../services/scheduling-reference.service';
 import { CreateShiftDto, ShiftResponseDto } from '../dto/shift.dto';
+import { ShiftQueryDto } from '../dto/shift-query.dto';
+import { LocationResponseDto } from '../dto/location-response.dto';
+import { SkillResponseDto } from '../dto/skill-response.dto';
 
 @ApiTags('shifts')
 @ApiBearerAuth()
 @Controller('shifts')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ShiftController {
-  constructor(private readonly shiftService: ShiftService) {}
+  constructor(
+    private readonly shiftService: ShiftService,
+    private readonly referenceService: SchedulingReferenceService,
+  ) {}
+
+  @Get('skills')
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'Get all active skills' })
+  @ApiResponse({ status: 200, type: [SkillResponseDto] })
+  async getSkills(): Promise<SkillResponseDto[]> {
+    return this.referenceService.getAllActiveSkills();
+  }
+
+  @Get('locations')
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'Get all locations' })
+  @ApiResponse({ status: 200, type: [LocationResponseDto] })
+  async getLocations(): Promise<LocationResponseDto[]> {
+    return this.referenceService.getAllLocations();
+  }
+
+  @Get()
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'List shifts by location and date range' })
+  @ApiResponse({ status: 200, type: [ShiftResponseDto] })
+  async listShifts(@Query() query: ShiftQueryDto) {
+    return this.shiftService.getShiftsByLocationAndDateRange(
+      query.locationId,
+      query.startDate,
+      query.endDate,
+    );
+  }
+
+  @Get(':shiftId')
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'Get shift detail by ID' })
+  @ApiResponse({ status: 200, type: ShiftResponseDto })
+  async getShift(@Param('shiftId', ParseIntPipe) shiftId: number) {
+    return this.shiftService.getShiftById(shiftId);
+  }
 
   @Post()
   @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
