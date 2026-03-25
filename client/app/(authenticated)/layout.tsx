@@ -13,6 +13,7 @@ import {
   DrawerTrigger,
 } from '@/components/ui/drawer';
 import { NavLinks } from '@/components/nav-links.client';
+import type { Role } from '@/components/nav-links.client';
 import { CalendarClock, LogOut, Menu } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,7 +41,9 @@ export default function AuthenticatedLayout({
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const role =
-    typeof window !== 'undefined' ? localStorage.getItem(ROLE_KEY) || '' : '';
+    typeof window !== 'undefined'
+      ? (localStorage.getItem(ROLE_KEY) as Role) || ''
+      : '';
   const userName =
     typeof window !== 'undefined' ? localStorage.getItem(NAME_KEY) || '' : '';
 

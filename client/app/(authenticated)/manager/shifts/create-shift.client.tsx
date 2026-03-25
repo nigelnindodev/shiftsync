@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Plus, Trash2, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,8 +34,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { mockLocations, mockSkills } from '@/lib/mock-data';
-import { Plus, Trash2, X } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface ShiftItem {
   id: number;
@@ -171,8 +171,9 @@ const INITIAL_SHIFTS: ShiftItem[] = [
   },
 ];
 
-const LOCATION = mockLocations.find((l) => l.id === 1)!;
-const TZ = LOCATION.timezone;
+const LOCATION = mockLocations.find((l) => l.id === 1);
+const TZ = LOCATION?.timezone ?? 'UTC';
+const LOCATION_NAME = LOCATION?.name ?? 'Unknown';
 
 function getStateBadge(state: string) {
   const map: Record<
@@ -186,9 +187,26 @@ function getStateBadge(state: string) {
   };
   return (
     <Badge variant={map[state]?.variant || 'outline'}>
-      {state.replace('_', ' ')}
+      {state.replace(/_/g, ' ')}
     </Badge>
   );
+}
+
+function localToUtc(dateStr: string, timeStr: string, tz: string): string {
+  // Parse local time components
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hour, minute] = timeStr.split(':').map(Number);
+
+  // Create a Date in the target timezone
+  const localDate = new Date(year, month - 1, day, hour, minute);
+
+  // Format this Date as if it were in the target timezone, then parse back
+  // to find the offset between what we "see" and what UTC is
+  const localStr = localDate.toLocaleString('en-US', { timeZone: tz });
+  const utcFromLocal = new Date(localStr);
+  const offsetMs = utcFromLocal.getTime() - localDate.getTime();
+
+  return new Date(localDate.getTime() - offsetMs).toISOString();
 }
 
 export default function ManagerShifts() {
@@ -223,8 +241,8 @@ export default function ManagerShifts() {
         };
       });
 
-    const startUtc = new Date(`${shiftDate}T${startTime}:00`).toISOString();
-    const endUtc = new Date(`${shiftDate}T${endTime}:00`).toISOString();
+    const startUtc = localToUtc(shiftDate, startTime, TZ);
+    const endUtc = localToUtc(shiftDate, endTime, TZ);
 
     setShifts((prev) => [
       {
@@ -274,7 +292,7 @@ export default function ManagerShifts() {
         <div>
           <h1 className="text-2xl font-bold">Shifts</h1>
           <p className="text-muted-foreground mt-1">
-            {LOCATION.name} — create and manage shifts
+            {LOCATION_NAME} — create and manage shifts
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -294,7 +312,7 @@ export default function ManagerShifts() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Input value={LOCATION.name} disabled />
+                <Input value={LOCATION_NAME} disabled />
               </div>
               <div className="space-y-2">
                 <Label>Date</Label>
@@ -340,9 +358,11 @@ export default function ManagerShifts() {
                     <Select
                       value={slot.skillId}
                       onValueChange={(val) => {
-                        const next = [...skillSlots];
-                        next[i].skillId = val;
-                        setSkillSlots(next);
+                        setSkillSlots((prev) =>
+                          prev.map((s, j) =>
+                            j === i ? { ...s, skillId: val } : s,
+                          ),
+                        );
                       }}
                     >
                       <SelectTrigger className="flex-1">
@@ -361,9 +381,16 @@ export default function ManagerShifts() {
                       min={1}
                       value={slot.headcount}
                       onChange={(e) => {
-                        const next = [...skillSlots];
-                        next[i].headcount = parseInt(e.target.value) || 1;
-                        setSkillSlots(next);
+                        setSkillSlots((prev) =>
+                          prev.map((s, j) =>
+                            j === i
+                              ? {
+                                  ...s,
+                                  headcount: parseInt(e.target.value) || 1,
+                                }
+                              : s,
+                          ),
+                        );
                       }}
                       className="w-20"
                     />

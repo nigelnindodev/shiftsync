@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { ArrowLeft, Clock, MapPin, Trash2, UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Card,
   CardContent,
@@ -24,8 +26,6 @@ import {
   mockEligibleStaff,
   mockLocations,
 } from '@/lib/mock-data';
-import { ArrowLeft, Clock, MapPin, Trash2, UserPlus } from 'lucide-react';
-import { toast } from 'sonner';
 
 function getStateBadge(state: string) {
   const map: Record<
@@ -114,7 +114,7 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
             {locationName}
           </span>
           <Badge variant={shift.state === 'FILLED' ? 'default' : 'secondary'}>
-            {shift.state.replace('_', ' ')}
+            {shift.state.replace(/_/g, ' ')}
           </Badge>
         </div>
       </div>
@@ -153,7 +153,11 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
 
                 <div className="space-y-1.5">
                   {mockAssignments
-                    .filter((a) => a.skillName === slot.skillName)
+                    .filter(
+                      (a) =>
+                        a.skillName === slot.skillName &&
+                        a.shiftId === shift.id,
+                    )
                     .slice(0, slot.assignedCount)
                     .map((a) => (
                       <div

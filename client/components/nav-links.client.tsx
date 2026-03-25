@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import {
   CalendarDays,
   Clock,
@@ -12,6 +11,7 @@ import {
   Shuffle,
   Timer,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface NavLink {
   href: string;
@@ -68,7 +68,9 @@ const adminLinks: NavLink[] = [
   },
 ];
 
-function getLinks(role: string): NavLink[] {
+export type Role = 'ADMIN' | 'MANAGER' | 'STAFF';
+
+function getLinks(role: Role | ''): NavLink[] {
   switch (role) {
     case 'STAFF':
       return staffLinks;
@@ -83,7 +85,6 @@ function getLinks(role: string): NavLink[] {
 
 function isActiveLink(pathname: string, href: string): boolean {
   if (pathname === href) return true;
-  if (href !== '/' && pathname.startsWith(`${href}/`)) return true;
   return false;
 }
 
@@ -92,7 +93,7 @@ export function NavLinks({
   role,
 }: {
   onNavigate?: () => void;
-  role: string;
+  role: Role | '';
 }) {
   const pathname = usePathname();
   const links = getLinks(role);
