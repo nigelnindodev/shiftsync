@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+type PendingApprovalState = 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL';
+
 export class PendingApprovalDto {
   @ApiProperty({ description: 'Assignment ID', example: 1 })
   assignmentId: number;
@@ -13,8 +15,9 @@ export class PendingApprovalDto {
   @ApiProperty({
     description: 'Assignment state',
     example: 'SWAP_PENDING_APPROVAL',
+    enum: ['SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL'],
   })
-  state: string;
+  state: PendingApprovalState;
 
   @ApiProperty({ description: 'Shift ID', example: 1 })
   shiftId: number;

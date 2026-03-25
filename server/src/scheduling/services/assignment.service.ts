@@ -788,7 +788,7 @@ export class AssignmentService {
       assignmentId: number;
       staffMemberId: number;
       staffName: string;
-      state: string;
+      state: 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL';
       shiftId: number;
       shiftDate: string;
       shiftTime: string;
@@ -811,7 +811,7 @@ export class AssignmentService {
         assignmentId: r.assignmentId,
         staffMemberId: r.staffMemberId,
         staffName: r.staffName,
-        state: r.state,
+        state: r.state as 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL',
         shiftId: r.shiftId,
         shiftDate,
         shiftTime: `${startTime} - ${endTime}`,

@@ -371,7 +371,16 @@ export class AssignmentRepository {
         l.id AS "locationId",
         l.name AS "locationName",
         sk.name AS "skillName",
-        su.name AS "swapTargetName"
+        CASE
+          WHEN a.state IN ('SWAP_REQUESTED', 'DROP_REQUESTED') THEN
+            (SELECT u.name FROM users u WHERE u.id = a.swap_target_id)
+          WHEN a.state IN ('SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL') AND a.swap_target_id IS NOT NULL THEN
+            (SELECT u.name FROM assignments pa
+             JOIN employee pe ON pa.staff_member_id = pe.id
+             JOIN users u ON pe.external_id = u.external_id
+             WHERE pa.id = a.swap_target_id)
+          ELSE NULL
+        END AS "swapTargetName"
       FROM assignments a
       JOIN shift_skills ss ON a.shift_skill_id = ss.id
       JOIN shifts s ON ss.shift_id = s.id
@@ -379,8 +388,6 @@ export class AssignmentRepository {
       JOIN skills sk ON ss.skill_id = sk.id
       JOIN employee e ON a.staff_member_id = e.id
       JOIN users eu ON e.external_id = eu.external_id
-      LEFT JOIN employee se ON a.swap_target_id = se.id
-      LEFT JOIN users su ON se.external_id = su.external_id
       WHERE l.id = $1
         AND a.state = ANY($2)
       ORDER BY s.start_time ASC

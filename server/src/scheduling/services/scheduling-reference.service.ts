@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { SkillRepository } from '../../staffing/repositories';
-import { LocationRepository } from '../../staffing/repositories';
+import { Skill } from '../../staffing/entities/skill.entity';
+import { Location } from '../../staffing/entities/location.entity';
+import {
+  SkillRepository,
+  LocationRepository,
+} from '../../staffing/repositories';
 
 @Injectable()
 export class SchedulingReferenceService {
@@ -9,11 +13,11 @@ export class SchedulingReferenceService {
     private readonly locationRepo: LocationRepository,
   ) {}
 
-  async getAllActiveSkills() {
+  async getAllActiveSkills(): Promise<Skill[]> {
     return this.skillRepo.findAllActive();
   }
 
-  async getAllLocations() {
+  async getAllLocations(): Promise<Location[]> {
     return this.locationRepo.findAll();
   }
 }
