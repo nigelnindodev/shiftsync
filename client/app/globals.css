@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -46,86 +46,50 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Cyberpunk/Neon Gaming Design System */
+/* Professional Pastel Design System */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* Dark gaming theme — all values wrapped in hsl() for Tailwind v4 */
-  --background: hsl(240 15% 6%);
-  --foreground: hsl(210 40% 98%);
-  --card: hsl(240 15% 9%);
-  --card-foreground: hsl(210 40% 98%);
-  --popover: hsl(240 15% 9%);
-  --popover-foreground: hsl(210 40% 98%);
-  --primary: hsl(280 100% 65%);
+  --background: hsl(210 20% 98%);
+  --foreground: hsl(220 25% 15%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(220 25% 15%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(220 25% 15%);
+  --primary: hsl(215 60% 50%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(195 100% 50%);
-  --secondary-foreground: hsl(240 15% 6%);
-  --muted: hsl(240 10% 15%);
-  --muted-foreground: hsl(215 20% 65%);
-  --accent: hsl(160 100% 45%);
-  --accent-foreground: hsl(240 15% 6%);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(210 40% 98%);
-  --border: hsl(240 10% 20%);
-  --input: hsl(240 10% 15%);
-  --ring: hsl(280 100% 65%);
+  --secondary: hsl(155 30% 55%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(210 15% 95%);
+  --muted-foreground: hsl(215 15% 45%);
+  --accent: hsl(35 80% 60%);
+  --accent-foreground: hsl(220 25% 15%);
+  --destructive: hsl(0 65% 55%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(210 15% 90%);
+  --input: hsl(210 15% 93%);
+  --ring: hsl(215 60% 50%);
 
-  /* Chart colors */
-  --chart-1: hsl(280 100% 65%);
-  --chart-2: hsl(195 100% 50%);
-  --chart-3: hsl(160 100% 45%);
-  --chart-4: hsl(330 100% 65%);
-  --chart-5: hsl(30 100% 55%);
+  --chart-1: hsl(215 60% 50%);
+  --chart-2: hsl(155 30% 55%);
+  --chart-3: hsl(35 80% 60%);
+  --chart-4: hsl(340 55% 55%);
+  --chart-5: hsl(265 50% 55%);
 
-  /* Sidebar */
-  --sidebar: hsl(240 15% 8%);
-  --sidebar-foreground: hsl(210 40% 98%);
-  --sidebar-primary: hsl(280 100% 65%);
+  --sidebar: hsl(210 20% 96%);
+  --sidebar-foreground: hsl(220 25% 20%);
+  --sidebar-primary: hsl(215 60% 50%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 10% 15%);
-  --sidebar-accent-foreground: hsl(210 40% 98%);
-  --sidebar-border: hsl(240 10% 20%);
-  --sidebar-ring: hsl(280 100% 65%);
+  --sidebar-accent: hsl(210 15% 92%);
+  --sidebar-accent-foreground: hsl(220 25% 20%);
+  --sidebar-border: hsl(210 15% 88%);
+  --sidebar-ring: hsl(215 60% 50%);
 
-  /* Custom gaming tokens */
-  --neon-purple: hsl(280 100% 65%);
-  --neon-cyan: hsl(195 100% 50%);
-  --neon-green: hsl(160 100% 45%);
-  --neon-pink: hsl(330 100% 65%);
-  --neon-orange: hsl(30 100% 55%);
-}
-
-.dark {
-  --background: hsl(240 15% 6%);
-  --foreground: hsl(210 40% 98%);
-  --card: hsl(240 15% 9%);
-  --card-foreground: hsl(210 40% 98%);
-  --popover: hsl(240 15% 9%);
-  --popover-foreground: hsl(210 40% 98%);
-  --primary: hsl(280 100% 65%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(195 100% 50%);
-  --secondary-foreground: hsl(240 15% 6%);
-  --muted: hsl(240 10% 15%);
-  --muted-foreground: hsl(215 20% 65%);
-  --accent: hsl(160 100% 45%);
-  --accent-foreground: hsl(240 15% 6%);
-  --destructive: hsl(0 62.8% 30.6%);
-  --destructive-foreground: hsl(210 40% 98%);
-  --border: hsl(240 10% 20%);
-  --input: hsl(240 10% 15%);
-  --ring: hsl(280 100% 65%);
-
-  /* Sidebar */
-  --sidebar: hsl(240 15% 8%);
-  --sidebar-foreground: hsl(210 40% 98%);
-  --sidebar-primary: hsl(280 100% 65%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 10% 15%);
-  --sidebar-accent-foreground: hsl(210 40% 98%);
-  --sidebar-border: hsl(240 10% 20%);
-  --sidebar-ring: hsl(280 100% 65%);
+  /* Status colors */
+  --status-assigned: hsl(155 45% 50%);
+  --status-pending: hsl(35 80% 60%);
+  --status-cancelled: hsl(215 15% 60%);
+  --status-warning: hsl(35 80% 60%);
 }
 
 @layer base {
@@ -139,80 +103,21 @@
 }
 
 @layer utilities {
-
-  /* Glow effects */
-  .glow-purple {
-    box-shadow: 0 0 20px hsl(280 100% 65% / 0.5);
-  }
-
-  .glow-cyan {
-    box-shadow: 0 0 20px hsl(195 100% 50% / 0.5);
-  }
-
-  .glow-green {
-    box-shadow: 0 0 20px hsl(160 100% 45% / 0.5);
-  }
-
-  /* Text glow effects */
-  .text-glow-purple {
-    text-shadow: 0 0 10px hsl(280 100% 65% / 0.8);
-  }
-
-  .text-glow-cyan {
-    text-shadow: 0 0 10px hsl(195 100% 50% / 0.8);
-  }
-
-  /* Neon border */
-  .neon-border {
-    border: 1px solid var(--primary);
+  .card-shadow {
     box-shadow:
-      0 0 5px color-mix(in srgb, var(--primary) 30%, transparent),
-      inset 0 0 5px color-mix(in srgb, var(--primary) 10%, transparent);
+      0 1px 3px hsl(210 20% 0% / 0.04),
+      0 1px 2px hsl(210 20% 0% / 0.06);
   }
 
-  /* Gaming gradient */
-  .gradient-gaming {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  .card-shadow-md {
+    box-shadow:
+      0 4px 6px hsl(210 20% 0% / 0.05),
+      0 2px 4px hsl(210 20% 0% / 0.06);
   }
 
-  /* Grid pattern background */
-  .bg-grid-pattern {
-    background-image:
-      linear-gradient(color-mix(in srgb, var(--border) 30%, transparent) 1px, transparent 1px),
-      linear-gradient(90deg, color-mix(in srgb, var(--border) 30%, transparent) 1px, transparent 1px);
-    background-size: 50px 50px;
-  }
-
-  /* Animations */
-  @keyframes pulse-glow {
-
-    0%,
-    100% {
-      opacity: 1;
-    }
-
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  @keyframes float {
-
-    0%,
-    100% {
-      transform: translateY(0px);
-    }
-
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  .animate-pulse-glow {
-    animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
+  .card-shadow-lg {
+    box-shadow:
+      0 10px 15px hsl(210 20% 0% / 0.06),
+      0 4px 6px hsl(210 20% 0% / 0.04);
   }
 }
