@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ import { EmployeeRole } from '../../users/user.types';
 import { Employee } from '../../users/entity/employee.entity';
 import { ShiftService } from '../services/shift.service';
 import { CreateShiftDto, ShiftResponseDto } from '../dto/shift.dto';
+import { ShiftQueryDto } from '../dto/shift-query.dto';
 
 @ApiTags('shifts')
 @ApiBearerAuth()
@@ -32,6 +34,28 @@ import { CreateShiftDto, ShiftResponseDto } from '../dto/shift.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ShiftController {
   constructor(private readonly shiftService: ShiftService) {}
+
+  @Get()
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'List shifts by location and date range' })
+  @ApiResponse({ status: 200, type: [ShiftResponseDto] })
+  async listShifts(@Query() query: ShiftQueryDto): Promise<ShiftResponseDto[]> {
+    return this.shiftService.getShiftsByLocationAndDateRange(
+      query.locationId,
+      query.startDate,
+      query.endDate,
+    );
+  }
+
+  @Get(':shiftId')
+  @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)
+  @ApiOperation({ summary: 'Get shift detail by ID' })
+  @ApiResponse({ status: 200, type: ShiftResponseDto })
+  async getShift(
+    @Param('shiftId', ParseIntPipe) shiftId: number,
+  ): Promise<ShiftResponseDto> {
+    return this.shiftService.getShiftById(shiftId);
+  }
 
   @Post()
   @Roles(EmployeeRole.MANAGER, EmployeeRole.ADMIN)

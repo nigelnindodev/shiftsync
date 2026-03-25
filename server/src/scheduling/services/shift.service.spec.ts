@@ -397,4 +397,140 @@ describe('ShiftService (Integration)', () => {
       );
     });
   });
+
+  describe('getShiftById', () => {
+    it('returns shift with skill slots', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Test Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+      const skill = await dataSource.getRepository(Skill).save({
+        name: 'bartender' + Date.now(),
+        isActive: true,
+      });
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-24T10:00:00Z'),
+        endTime: new Date('2026-03-24T18:00:00Z'),
+        state: ShiftState.OPEN,
+      });
+      await dataSource.getRepository(ShiftSkill).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 2,
+      });
+
+      const result = await shiftService.getShiftById(shift.id);
+
+      expect(result.id).toBe(shift.id);
+      expect(result.locationId).toBe(location.id);
+      expect(result.skills).toHaveLength(1);
+      expect(result.skills[0].skillName).toBe(skill.name);
+    });
+
+    it('throws NotFoundException for non-existent shift', async () => {
+      await expect(shiftService.getShiftById(99999)).rejects.toThrow(
+        'Shift 99999 not found',
+      );
+    });
+  });
+
+  describe('getShiftsByLocationAndDateRange', () => {
+    it('returns shifts enriched with skill slots for the given location and date range', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Test Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+      const skill1 = await dataSource.getRepository(Skill).save({
+        name: 'bartender' + Date.now(),
+        isActive: true,
+      });
+      const skill2 = await dataSource.getRepository(Skill).save({
+        name: 'server' + Date.now(),
+        isActive: true,
+      });
+
+      const shift1 = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-25T09:00:00Z'),
+        endTime: new Date('2026-03-25T17:00:00Z'),
+        state: ShiftState.OPEN,
+      });
+      await dataSource.getRepository(ShiftSkill).save({
+        shiftId: shift1.id,
+        skillId: skill1.id,
+        headcount: 1,
+      });
+
+      const shift2 = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-26T09:00:00Z'),
+        endTime: new Date('2026-03-26T17:00:00Z'),
+        state: ShiftState.OPEN,
+      });
+      await dataSource.getRepository(ShiftSkill).save({
+        shiftId: shift2.id,
+        skillId: skill2.id,
+        headcount: 2,
+      });
+
+      // Shift outside range — should not be returned
+      await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-04-15T09:00:00Z'),
+        endTime: new Date('2026-04-15T17:00:00Z'),
+        state: ShiftState.OPEN,
+      });
+
+      const result = await shiftService.getShiftsByLocationAndDateRange(
+        location.id,
+        '2026-03-23',
+        '2026-03-31',
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe(shift1.id);
+      expect(result[0].skills).toHaveLength(1);
+      expect(result[0].skills[0].skillName).toBe(skill1.name);
+      expect(result[1].id).toBe(shift2.id);
+      expect(result[1].skills[0].skillName).toBe(skill2.name);
+    });
+
+    it('excludes cancelled and completed shifts', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Test Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+
+      await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-25T09:00:00Z'),
+        endTime: new Date('2026-03-25T17:00:00Z'),
+        state: ShiftState.CANCELLED,
+      });
+
+      const result = await shiftService.getShiftsByLocationAndDateRange(
+        location.id,
+        '2026-03-23',
+        '2026-03-31',
+      );
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('returns empty array for location with no shifts', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Empty Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+
+      const result = await shiftService.getShiftsByLocationAndDateRange(
+        location.id,
+        '2026-03-23',
+        '2026-03-31',
+      );
+
+      expect(result).toHaveLength(0);
+    });
+  });
 });

@@ -31,9 +31,12 @@ import { AssignmentController } from './controllers/assignment.controller';
 import { StaffScheduleController } from './controllers/staff-schedule.controller';
 import { StaffAvailabilityController } from './controllers/staff-availability.controller';
 import { StaffSwapDropController } from './controllers/staff-swap-drop.controller';
+import { ApprovalsController } from './controllers/approvals.controller';
+import { ReferenceController } from './controllers/reference.controller';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { SCHEDULING_EVENTS_CLIENT } from './scheduling.constants';
 import { AppConfigService } from '../config';
+import { SchedulingReferenceService } from './services/scheduling-reference.service';
 
 @Module({
   imports: [
@@ -61,6 +64,8 @@ import { AppConfigService } from '../config';
     ]),
   ],
   controllers: [
+    ReferenceController,
+    ApprovalsController,
     ShiftController,
     AssignmentController,
     StaffScheduleController,
@@ -80,6 +85,7 @@ import { AppConfigService } from '../config';
     AssignmentService,
     StaffScheduleService,
     StaffAvailabilityService,
+    SchedulingReferenceService,
   ],
   exports: [
     ShiftRepository,
@@ -94,6 +100,7 @@ import { AppConfigService } from '../config';
     AssignmentService,
     StaffScheduleService,
     StaffAvailabilityService,
+    SchedulingReferenceService,
   ],
 })
 export class SchedulingModule {}

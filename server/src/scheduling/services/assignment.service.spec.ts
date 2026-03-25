@@ -880,4 +880,62 @@ describe('AssignmentService (Integration)', () => {
       expect(updatedB?.state).toBe(AssignmentState.CANCELLED);
     });
   });
+
+  describe('getPendingApprovalsForLocation', () => {
+    it('returns pending swap/drop assignments for the given location', async () => {
+      const { employee: staffA } = await createEmployee('Staff A');
+      const { employee: staffB } = await createEmployee('Staff B');
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(staffA.id, location.id, skill.id);
+      await certifyEmployee(staffB.id, location.id, skill.id);
+
+      const { shiftSkill } = await createShiftWithSlot(location.id, skill.id);
+
+      // Create assignment in SWAP_REQUESTED with target = staffB
+      const assignmentA = await dataSource.getRepository(Assignment).save({
+        staffMemberId: staffA.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.SWAP_REQUESTED,
+        swapTargetId: staffB.id,
+      });
+
+      // Use acceptSwap to produce canonical SWAP_PENDING_APPROVAL pair
+      await assignmentService.acceptSwap(assignmentA.id, staffB.id);
+
+      // Regular assignment — should not appear
+      await dataSource.getRepository(Assignment).save({
+        shiftSkillId: shiftSkill.id,
+        staffMemberId: staffA.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      const result = await assignmentService.getPendingApprovalsForLocation(
+        location.id,
+      );
+
+      expect(result).toHaveLength(2);
+      const staffAEntry = result.find((r) => r.staffName === 'Staff A');
+      const staffBEntry = result.find((r) => r.staffName === 'Staff B');
+      expect(staffAEntry).toBeDefined();
+      expect(staffAEntry?.state).toBe('SWAP_PENDING_APPROVAL');
+      expect(staffAEntry?.swapTargetName).toBe('Staff B');
+      expect(staffBEntry).toBeDefined();
+      expect(staffBEntry?.state).toBe('SWAP_PENDING_APPROVAL');
+      expect(staffBEntry?.swapTargetName).toBe('Staff A');
+    });
+
+    it('returns empty array when no pending approvals exist', async () => {
+      const location = await dataSource.getRepository(Location).save({
+        name: 'Empty Location ' + Date.now(),
+        timezone: 'America/New_York',
+      });
+
+      const result = await assignmentService.getPendingApprovalsForLocation(
+        location.id,
+      );
+
+      expect(result).toHaveLength(0);
+    });
+  });
 });

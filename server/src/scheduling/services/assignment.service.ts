@@ -782,4 +782,44 @@ export class AssignmentService {
       new Date(sunday.toInstant().toString()),
     ];
   }
+
+  async getPendingApprovalsForLocation(locationId: number): Promise<
+    Array<{
+      assignmentId: number;
+      staffMemberId: number;
+      staffName: string;
+      state: 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL';
+      shiftId: number;
+      shiftDate: string;
+      shiftTime: string;
+      locationId: number;
+      locationName: string;
+      skillName: string;
+      swapTargetName: string | null;
+    }>
+  > {
+    const rows = await this.assignmentRepo.findPendingForLocation(locationId);
+
+    return rows.map((r) => {
+      const startDate = new Date(r.startTime);
+      const endDate = new Date(r.endTime);
+      const shiftDate = startDate.toISOString().split('T')[0];
+      const startTime = startDate.toISOString().split('T')[1].substring(0, 5);
+      const endTime = endDate.toISOString().split('T')[1].substring(0, 5);
+
+      return {
+        assignmentId: r.assignmentId,
+        staffMemberId: r.staffMemberId,
+        staffName: r.staffName,
+        state: r.state as 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL',
+        shiftId: r.shiftId,
+        shiftDate,
+        shiftTime: `${startTime} - ${endTime}`,
+        locationId: r.locationId,
+        locationName: r.locationName,
+        skillName: r.skillName,
+        swapTargetName: r.swapTargetName,
+      };
+    });
+  }
 }
