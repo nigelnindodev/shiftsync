@@ -36,7 +36,7 @@ services:
       PG_PORT: 5432
       PG_USERNAME: changeuser
       PG_PASSWORD: changepass
-      PG_DATABASE: change_dbname
+      PG_DATABASE: change_dbname_shiftsync
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
