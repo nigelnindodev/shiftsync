@@ -1,12 +1,6 @@
 name: Server CI
 
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'server/**'
-      - '.github/workflows/server.yml'
-      - '.github/workflows/node-ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
@@ -21,4 +15,5 @@ jobs:
     with:
       working-directory: server
       node-version: '22.x'
-      upload-artifacts: false 
+      upload-artifacts: false
+      run-tests: true

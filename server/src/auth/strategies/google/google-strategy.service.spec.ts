@@ -1,12 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GoogleOAuthStrategyService } from './google-strategy.service';
+import { AppConfigService } from 'src/config';
 
 describe('GoogleStrategyService', () => {
   let service: GoogleOAuthStrategyService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [GoogleOAuthStrategyService],
+      providers: [
+        GoogleOAuthStrategyService,
+        {
+          provide: AppConfigService,
+          useValue: {
+            googleOAuthConfiguration: {
+              clientId: 'test-client-id',
+              clientSecret: 'test-client-secret',
+            },
+            serverBaseUrl: 'http://localhost:5000',
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<GoogleOAuthStrategyService>(
