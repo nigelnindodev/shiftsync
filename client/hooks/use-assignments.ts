@@ -80,6 +80,20 @@ export function useRemoveAssignment() {
   });
 }
 
+export function useAllSlotAssignments(shiftId: number, slotIds: number[]) {
+  const results = useQuery({
+    queryKey: ['assignments', 'all', shiftId, slotIds],
+    queryFn: async () => {
+      const promises = slotIds.map((slotId) =>
+        apiClient.getAssignments(shiftId, slotId),
+      );
+      return Promise.all(promises);
+    },
+    enabled: shiftId > 0 && slotIds.length > 0,
+  });
+  return results;
+}
+
 export function useApproveSwapDrop() {
   const queryClient = useQueryClient();
   return useMutation({
