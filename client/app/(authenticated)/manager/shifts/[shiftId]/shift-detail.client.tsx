@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Clock, MapPin, Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,7 +28,7 @@ import {
   mockLocations,
 } from '@/lib/mock-data';
 
-function getStateBadge(state: string) {
+function getStateBadge(state: string): React.ReactElement {
   const map: Record<
     string,
     { variant: 'default' | 'secondary' | 'outline' | 'destructive' }
@@ -49,6 +50,46 @@ function getStateBadge(state: string) {
 export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
   const shift = mockShifts.find((s) => s.id === shiftId);
 
+  const location = shift
+    ? mockLocations.find((l) => l.id === shift.locationId)
+    : undefined;
+  const tz = location?.timezone ?? 'UTC';
+  const locationName = location?.name ?? 'Unknown';
+
+  const [assignedStaff, setAssignedStaff] = useState<
+    Array<{
+      assignmentId: number;
+      staffMemberId: number;
+      staffName: string;
+      state: string;
+      skillName: string;
+      shiftId: number;
+    }>
+  >(mockAssignments.filter((a) => a.shiftId === shift?.id));
+
+  const handleAssign = (staffName: string, staffId: number) => {
+    if (!shift) return;
+    setAssignedStaff((prev) => [
+      ...prev,
+      {
+        assignmentId: Date.now(),
+        staffMemberId: staffId,
+        staffName,
+        state: 'ASSIGNED',
+        skillName: shift.skills[0]?.skillName ?? 'unknown',
+        shiftId: shift.id,
+      },
+    ]);
+    toast.success(`${staffName} assigned to shift`);
+  };
+
+  const handleRemove = (assignmentId: number) => {
+    setAssignedStaff((prev) =>
+      prev.filter((a) => a.assignmentId !== assignmentId),
+    );
+    toast.success('Assignment removed');
+  };
+
   if (!shift) {
     return (
       <div className="p-8">
@@ -63,18 +104,6 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
       </div>
     );
   }
-
-  const location = mockLocations.find((l) => l.id === shift.locationId);
-  const tz = location?.timezone ?? 'UTC';
-  const locationName = location?.name ?? 'Unknown';
-
-  const handleAssign = (staffName: string) => {
-    toast.success(`${staffName} assigned to shift`);
-  };
-
-  const handleRemove = (staffName: string) => {
-    toast.success(`${staffName} removed from shift`);
-  };
 
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('en-US', {
@@ -152,7 +181,7 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                 </div>
 
                 <div className="space-y-1.5">
-                  {mockAssignments
+                  {assignedStaff
                     .filter(
                       (a) =>
                         a.skillName === slot.skillName &&
@@ -172,7 +201,7 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                           variant="ghost"
                           size="sm"
                           className="text-muted-foreground hover:text-destructive h-7 px-2"
-                          onClick={() => handleRemove(a.staffName)}
+                          onClick={() => handleRemove(a.assignmentId)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -231,7 +260,9 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                         variant="outline"
                         size="sm"
                         className="gap-1.5 h-7"
-                        onClick={() => handleAssign(staff.name)}
+                        onClick={() =>
+                          handleAssign(staff.name, staff.staffMemberId)
+                        }
                       >
                         <UserPlus className="w-3 h-3" />
                         Assign

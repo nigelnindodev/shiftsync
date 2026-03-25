@@ -35,12 +35,14 @@ import {
 } from '@/components/ui/table';
 import { mockLocations, mockSkills } from '@/lib/mock-data';
 
+type ShiftState = 'OPEN' | 'PARTIALLY_FILLED' | 'FILLED' | 'CANCELLED';
+
 interface ShiftItem {
   id: number;
   locationId: number;
   startTime: string;
   endTime: string;
-  state: string;
+  state: ShiftState;
   skills: Array<{
     id: number;
     skillId: number;
@@ -48,6 +50,12 @@ interface ShiftItem {
     headcount: number;
     assignedCount: number;
   }>;
+}
+
+interface SkillSlot {
+  id: number;
+  skillId: string;
+  headcount: number;
 }
 
 const INITIAL_SHIFTS: ShiftItem[] = [
@@ -175,23 +183,23 @@ const LOCATION = mockLocations.find((l) => l.id === 1);
 const TZ = LOCATION?.timezone ?? 'UTC';
 const LOCATION_NAME = LOCATION?.name ?? 'Unknown';
 
-function getStateBadge(state: string) {
-  const map: Record<
-    string,
-    { variant: 'default' | 'secondary' | 'outline' | 'destructive' }
-  > = {
-    OPEN: { variant: 'default' },
-    PARTIALLY_FILLED: { variant: 'secondary' },
-    FILLED: { variant: 'default' },
-    CANCELLED: { variant: 'destructive' },
-  };
-  return (
-    <Badge variant={map[state]?.variant || 'outline'}>
-      {state.replace(/_/g, ' ')}
-    </Badge>
-  );
+function getStateBadge(state: ShiftState): React.ReactElement {
+  const variant = ((): 'default' | 'secondary' | 'destructive' => {
+    switch (state) {
+      case 'OPEN':
+        return 'default';
+      case 'PARTIALLY_FILLED':
+        return 'secondary';
+      case 'FILLED':
+        return 'default';
+      case 'CANCELLED':
+        return 'destructive';
+    }
+  })();
+  return <Badge variant={variant}>{state.replace(/_/g, ' ')}</Badge>;
 }
 
+/** Converts a local date + time in the given IANA timezone to a UTC ISO string. */
 function localToUtc(dateStr: string, timeStr: string, tz: string): string {
   // Parse local time components
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -215,19 +223,35 @@ export default function ManagerShifts() {
   const [shiftDate, setShiftDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
-  const [skillSlots, setSkillSlots] = useState<
-    Array<{ skillId: string; headcount: number }>
-  >([{ skillId: '', headcount: 1 }]);
+  const [skillSlots, setSkillSlots] = useState<SkillSlot[]>([
+    { id: 1, skillId: '', headcount: 1 },
+  ]);
 
   const addSkillSlot = () => {
-    setSkillSlots((prev) => [...prev, { skillId: '', headcount: 1 }]);
+    setSkillSlots((prev) => [
+      ...prev,
+      { id: prev.length + 1, skillId: '', headcount: 1 },
+    ]);
   };
 
-  const removeSkillSlot = (index: number) => {
-    setSkillSlots((prev) => prev.filter((_, i) => i !== index));
+  const removeSkillSlot = (id: number) => {
+    setSkillSlots((prev) => prev.filter((s) => s.id !== id));
   };
 
   const handleCreate = () => {
+    if (!shiftDate) {
+      toast.error('Please select a date');
+      return;
+    }
+
+    const startUtc = localToUtc(shiftDate, startTime, TZ);
+    const endUtc = localToUtc(shiftDate, endTime, TZ);
+
+    if (endUtc <= startUtc) {
+      toast.error('End time must be after start time');
+      return;
+    }
+
     const skillEntries = skillSlots
       .filter((s) => s.skillId)
       .map((s, i) => {
@@ -241,8 +265,15 @@ export default function ManagerShifts() {
         };
       });
 
-    const startUtc = localToUtc(shiftDate, startTime, TZ);
-    const endUtc = localToUtc(shiftDate, endTime, TZ);
+    if (skillEntries.length === 0) {
+      toast.error('Select at least one skill');
+      return;
+    }
+
+    if (skillEntries.some((s) => s.headcount < 1)) {
+      toast.error('Headcount must be at least 1');
+      return;
+    }
 
     setShifts((prev) => [
       {
@@ -261,7 +292,7 @@ export default function ManagerShifts() {
     setShiftDate('');
     setStartTime('09:00');
     setEndTime('17:00');
-    setSkillSlots([{ skillId: '', headcount: 1 }]);
+    setSkillSlots([{ id: 1, skillId: '', headcount: 1 }]);
   };
 
   const handleCancel = (id: number) => {
@@ -353,14 +384,14 @@ export default function ManagerShifts() {
                     <Plus className="w-3 h-3" /> Add Skill
                   </Button>
                 </div>
-                {skillSlots.map((slot, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                {skillSlots.map((slot) => (
+                  <div key={slot.id} className="flex items-center gap-2">
                     <Select
                       value={slot.skillId}
                       onValueChange={(val) => {
                         setSkillSlots((prev) =>
-                          prev.map((s, j) =>
-                            j === i ? { ...s, skillId: val } : s,
+                          prev.map((s) =>
+                            s.id === slot.id ? { ...s, skillId: val } : s,
                           ),
                         );
                       }}
@@ -382,8 +413,8 @@ export default function ManagerShifts() {
                       value={slot.headcount}
                       onChange={(e) => {
                         setSkillSlots((prev) =>
-                          prev.map((s, j) =>
-                            j === i
+                          prev.map((s) =>
+                            s.id === slot.id
                               ? {
                                   ...s,
                                   headcount: parseInt(e.target.value) || 1,
@@ -396,7 +427,7 @@ export default function ManagerShifts() {
                     />
                     {skillSlots.length > 1 && (
                       <button
-                        onClick={() => removeSkillSlot(i)}
+                        onClick={() => removeSkillSlot(slot.id)}
                         className="text-muted-foreground hover:text-destructive"
                       >
                         <X className="w-4 h-4" />
