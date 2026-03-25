@@ -17,7 +17,7 @@ export class AppConfigService extends ConfigService {
       port: this.get<number>('PG_PORT', 5432),
       username: this.get<string>('PG_USERNAME', 'changeuser'),
       password: this.get<string>('PG_PASSWORD', 'changepass'),
-      database: this.get<string>('PG_DATABASE', 'change_dbname'),
+      database: this.get<string>('PG_DATABASE', 'change_dbname_shiftsync'),
     };
   }
 

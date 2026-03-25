@@ -2,12 +2,12 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     restart: always
     environment:
       POSTGRES_USER: changeuser
       POSTGRES_PASSWORD: changepass
-      POSTGRES_DB: change_dbname
+      POSTGRES_DB: change_dbname_shiftsync
     ports:
       - "5432:5432"
     volumes:
