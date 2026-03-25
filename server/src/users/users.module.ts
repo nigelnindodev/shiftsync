@@ -23,5 +23,6 @@ import { SecurityModule } from 'src/security/security.module';
     UsersMicroserviceController,
     TestingController,
   ],
+  exports: [UsersService, EmployeeRepository],
 })
 export class UsersModule {}

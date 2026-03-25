@@ -37,6 +37,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { SCHEDULING_EVENTS_CLIENT } from './scheduling.constants';
 import { AppConfigService } from '../config';
 import { SchedulingReferenceService } from './services/scheduling-reference.service';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { SchedulingReferenceService } from './services/scheduling-reference.serv
     ]),
     StaffingModule,
     UsersModule,
+    CommonModule,
     ClientsModule.registerAsync([
       {
         name: SCHEDULING_EVENTS_CLIENT,
