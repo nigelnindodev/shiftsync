@@ -347,24 +347,28 @@ export const mockAssignments = [
     staffMemberId: 7,
     staffName: 'John Bartender',
     state: 'ASSIGNED',
+    skillName: 'bartender',
   },
   {
     assignmentId: 202,
     staffMemberId: 8,
     staffName: 'Sarah Server',
     state: 'ASSIGNED',
+    skillName: 'server',
   },
   {
     assignmentId: 203,
     staffMemberId: 9,
     staffName: 'Maria Line Cook',
     state: 'SWAP_REQUESTED',
+    skillName: 'line cook',
   },
   {
     assignmentId: 204,
     staffMemberId: 15,
     staffName: 'Alexandra Server',
     state: 'ASSIGNED',
+    skillName: 'server',
   },
 ];
 

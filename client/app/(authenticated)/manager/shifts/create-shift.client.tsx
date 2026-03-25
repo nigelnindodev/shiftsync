@@ -31,9 +31,148 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockShifts, mockSkills } from '@/lib/mock-data';
+import { mockLocations, mockSkills } from '@/lib/mock-data';
 import { Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface ShiftItem {
+  id: number;
+  locationId: number;
+  startTime: string;
+  endTime: string;
+  state: string;
+  skills: Array<{
+    id: number;
+    skillId: number;
+    skillName: string;
+    headcount: number;
+    assignedCount: number;
+  }>;
+}
+
+const INITIAL_SHIFTS: ShiftItem[] = [
+  {
+    id: 1,
+    locationId: 1,
+    startTime: '2026-03-23T09:00:00Z',
+    endTime: '2026-03-23T17:00:00Z',
+    state: 'OPEN',
+    skills: [
+      {
+        id: 1,
+        skillId: 1,
+        skillName: 'bartender',
+        headcount: 1,
+        assignedCount: 1,
+      },
+      {
+        id: 2,
+        skillId: 3,
+        skillName: 'server',
+        headcount: 2,
+        assignedCount: 1,
+      },
+    ],
+  },
+  {
+    id: 2,
+    locationId: 1,
+    startTime: '2026-03-24T09:00:00Z',
+    endTime: '2026-03-24T17:00:00Z',
+    state: 'PARTIALLY_FILLED',
+    skills: [
+      {
+        id: 3,
+        skillId: 1,
+        skillName: 'bartender',
+        headcount: 1,
+        assignedCount: 1,
+      },
+      {
+        id: 4,
+        skillId: 3,
+        skillName: 'server',
+        headcount: 2,
+        assignedCount: 0,
+      },
+    ],
+  },
+  {
+    id: 3,
+    locationId: 1,
+    startTime: '2026-03-25T09:00:00Z',
+    endTime: '2026-03-25T17:00:00Z',
+    state: 'FILLED',
+    skills: [
+      {
+        id: 5,
+        skillId: 1,
+        skillName: 'bartender',
+        headcount: 1,
+        assignedCount: 1,
+      },
+      {
+        id: 6,
+        skillId: 3,
+        skillName: 'server',
+        headcount: 2,
+        assignedCount: 2,
+      },
+    ],
+  },
+  {
+    id: 4,
+    locationId: 1,
+    startTime: '2026-03-26T17:00:00Z',
+    endTime: '2026-03-27T01:00:00Z',
+    state: 'OPEN',
+    skills: [
+      {
+        id: 7,
+        skillId: 2,
+        skillName: 'line cook',
+        headcount: 1,
+        assignedCount: 0,
+      },
+      {
+        id: 8,
+        skillId: 3,
+        skillName: 'server',
+        headcount: 3,
+        assignedCount: 1,
+      },
+    ],
+  },
+  {
+    id: 5,
+    locationId: 1,
+    startTime: '2026-03-27T10:00:00Z',
+    endTime: '2026-03-27T18:00:00Z',
+    state: 'OPEN',
+    skills: [
+      { id: 9, skillId: 4, skillName: 'host', headcount: 1, assignedCount: 0 },
+    ],
+  },
+  {
+    id: 6,
+    locationId: 1,
+    startTime: '2026-03-28T09:00:00Z',
+    endTime: '2026-03-28T17:00:00Z',
+    state: 'CANCELLED',
+    skills: [
+      {
+        id: 10,
+        skillId: 1,
+        skillName: 'bartender',
+        headcount: 1,
+        assignedCount: 0,
+      },
+    ],
+  },
+];
+
+const LOCATION = mockLocations.find((l) => l.id === 1)!;
+const TZ = LOCATION.timezone;
 
 function getStateBadge(state: string) {
   const map: Record<
@@ -53,6 +192,7 @@ function getStateBadge(state: string) {
 }
 
 export default function ManagerShifts() {
+  const [shifts, setShifts] = useState<ShiftItem[]>(INITIAL_SHIFTS);
   const [createOpen, setCreateOpen] = useState(false);
   const [shiftDate, setShiftDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
@@ -70,6 +210,34 @@ export default function ManagerShifts() {
   };
 
   const handleCreate = () => {
+    const skillEntries = skillSlots
+      .filter((s) => s.skillId)
+      .map((s, i) => {
+        const skill = mockSkills.find((sk) => sk.id === parseInt(s.skillId));
+        return {
+          id: Date.now() + i,
+          skillId: parseInt(s.skillId),
+          skillName: skill?.name ?? 'unknown',
+          headcount: s.headcount,
+          assignedCount: 0,
+        };
+      });
+
+    const startUtc = new Date(`${shiftDate}T${startTime}:00`).toISOString();
+    const endUtc = new Date(`${shiftDate}T${endTime}:00`).toISOString();
+
+    setShifts((prev) => [
+      {
+        id: Date.now(),
+        locationId: 1,
+        startTime: startUtc,
+        endTime: endUtc,
+        state: 'OPEN',
+        skills: skillEntries,
+      },
+      ...prev,
+    ]);
+
     toast.success('Shift created');
     setCreateOpen(false);
     setShiftDate('');
@@ -79,8 +247,26 @@ export default function ManagerShifts() {
   };
 
   const handleCancel = (id: number) => {
-    toast.success(`Shift #${id} cancelled`);
+    setShifts((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, state: 'CANCELLED' } : s)),
+    );
+    toast.success('Shift cancelled');
   };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: TZ,
+    });
+
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: TZ,
+    });
 
   return (
     <div className="p-8">
@@ -88,7 +274,7 @@ export default function ManagerShifts() {
         <div>
           <h1 className="text-2xl font-bold">Shifts</h1>
           <p className="text-muted-foreground mt-1">
-            Downtown — create and manage shifts
+            {LOCATION.name} — create and manage shifts
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -108,7 +294,7 @@ export default function ManagerShifts() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Input value="Downtown" disabled />
+                <Input value={LOCATION.name} disabled />
               </div>
               <div className="space-y-2">
                 <Label>Date</Label>
@@ -217,30 +403,19 @@ export default function ManagerShifts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockShifts.map((shift) => (
+            {shifts.map((shift) => (
               <TableRow key={shift.id}>
                 <TableCell>
                   <Link
                     href={`/manager/shifts/${shift.id}`}
                     className="font-medium hover:text-primary transition-colors"
                   >
-                    {new Date(shift.startTime).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatDate(shift.startTime)}
                   </Link>
                 </TableCell>
                 <TableCell>
-                  {new Date(shift.startTime).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}{' '}
-                  –{' '}
-                  {new Date(shift.endTime).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
+                  {formatTime(shift.startTime)} &ndash;{' '}
+                  {formatTime(shift.endTime)}
                 </TableCell>
                 <TableCell>{getStateBadge(shift.state)}</TableCell>
                 <TableCell>

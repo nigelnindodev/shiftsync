@@ -22,6 +22,7 @@ import {
   mockShifts,
   mockAssignments,
   mockEligibleStaff,
+  mockLocations,
 } from '@/lib/mock-data';
 import { ArrowLeft, Clock, MapPin, Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,13 +46,27 @@ function getStateBadge(state: string) {
   );
 }
 
-export default function ShiftDetailView({
-  params,
-}: {
-  params: { shiftId: string };
-}) {
-  const shiftId = parseInt(params.shiftId);
-  const shift = mockShifts.find((s) => s.id === shiftId) || mockShifts[0];
+export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
+  const shift = mockShifts.find((s) => s.id === shiftId);
+
+  if (!shift) {
+    return (
+      <div className="p-8">
+        <Link
+          href="/manager/shifts"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Shifts
+        </Link>
+        <p className="text-muted-foreground">Shift not found.</p>
+      </div>
+    );
+  }
+
+  const location = mockLocations.find((l) => l.id === shift.locationId);
+  const tz = location?.timezone ?? 'UTC';
+  const locationName = location?.name ?? 'Unknown';
 
   const handleAssign = (staffName: string) => {
     toast.success(`${staffName} assigned to shift`);
@@ -60,6 +75,21 @@ export default function ShiftDetailView({
   const handleRemove = (staffName: string) => {
     toast.success(`${staffName} removed from shift`);
   };
+
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: tz,
+    });
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone: tz,
+    });
 
   return (
     <div className="p-8">
@@ -76,25 +106,12 @@ export default function ShiftDetailView({
         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Clock className="w-4 h-4" />
-            {new Date(shift.startTime).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-            ,{' '}
-            {new Date(shift.startTime).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}{' '}
-            –{' '}
-            {new Date(shift.endTime).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
+            {formatDate(shift.startTime)}, {formatTime(shift.startTime)} &ndash;{' '}
+            {formatTime(shift.endTime)}
           </span>
           <span className="flex items-center gap-1.5">
             <MapPin className="w-4 h-4" />
-            Downtown
+            {locationName}
           </span>
           <Badge variant={shift.state === 'FILLED' ? 'default' : 'secondary'}>
             {shift.state.replace('_', ' ')}
@@ -136,11 +153,7 @@ export default function ShiftDetailView({
 
                 <div className="space-y-1.5">
                   {mockAssignments
-                    .filter(
-                      () =>
-                        slot.skillName === 'bartender' ||
-                        slot.skillName === 'server',
-                    )
+                    .filter((a) => a.skillName === slot.skillName)
                     .slice(0, slot.assignedCount)
                     .map((a) => (
                       <div

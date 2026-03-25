@@ -21,6 +21,11 @@ export default function SwapRequestsView() {
     toast.success('Drop claimed — pending manager approval');
   };
 
+  const handleReject = (id: number) => {
+    setRequests((prev) => prev.filter((r) => r.assignmentId !== id));
+    toast.success('Request dismissed');
+  };
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-1">Swap & Drop Requests</h1>
@@ -96,6 +101,7 @@ export default function SwapRequestsView() {
                   size="sm"
                   variant="ghost"
                   className="text-muted-foreground hover:text-destructive"
+                  onClick={() => handleReject(req.assignmentId)}
                 >
                   <X className="w-3.5 h-3.5" />
                 </Button>

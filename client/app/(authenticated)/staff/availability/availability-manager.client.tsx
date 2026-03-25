@@ -45,16 +45,15 @@ const DAY_LABELS: Record<string, string> = {
 
 export default function AvailabilityManager() {
   const [windows, setWindows] = useState(mockAvailability);
-  const [exceptions, setExceptions] =
-    useState<
-      Array<{
-        id: number;
-        date: string;
-        isAvailable: boolean;
-        wallStartTime?: string;
-        wallEndTime?: string;
-      }>
-    >(mockExceptions);
+  const [exceptions, setExceptions] = useState<
+    Array<{
+      id: number;
+      date: string;
+      isAvailable: boolean;
+      wallStartTime?: string;
+      wallEndTime?: string;
+    }>
+  >(mockExceptions);
   const [addWindowOpen, setAddWindowOpen] = useState(false);
   const [addExceptionOpen, setAddExceptionOpen] = useState(false);
   const [newDay, setNewDay] = useState('');
@@ -67,6 +66,10 @@ export default function AvailabilityManager() {
 
   const handleAddWindow = () => {
     if (!newDay) return;
+    if (newStart >= newEnd) {
+      toast.error('Start time must be before end time');
+      return;
+    }
     setWindows((prev) => [
       ...prev,
       {
@@ -88,6 +91,10 @@ export default function AvailabilityManager() {
 
   const handleAddException = () => {
     if (!newExceptionDate) return;
+    if (newExceptionAvailable && newExceptionStart >= newExceptionEnd) {
+      toast.error('Start time must be before end time');
+      return;
+    }
     setExceptions((prev) => [
       ...prev,
       {
