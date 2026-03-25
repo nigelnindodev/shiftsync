@@ -21,6 +21,7 @@ import {
 } from './repositories';
 import { StaffingModule } from '../staffing/staffing.module';
 import { UsersModule } from '../users/users.module';
+import { SecurityModule } from '../security/security.module';
 import { SchedulingConstraintService } from './constraints/scheduling-constraint.service';
 import { ShiftService } from './services/shift.service';
 import { AssignmentService } from './services/assignment.service';
@@ -54,6 +55,7 @@ import { CommonModule } from '../common/common.module';
     StaffingModule,
     UsersModule,
     CommonModule,
+    SecurityModule,
     ClientsModule.registerAsync([
       {
         name: SCHEDULING_EVENTS_CLIENT,
