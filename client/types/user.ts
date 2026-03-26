@@ -1,6 +1,7 @@
 import type { EmployeeRole } from './scheduling';
 
 export interface EmployeeProfile {
+  id: number;
   externalId: string;
   role: EmployeeRole;
   homeTimezone?: string;

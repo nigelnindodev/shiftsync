@@ -9,15 +9,20 @@ services:
       POSTGRES_PASSWORD: changepass
       POSTGRES_DB: change_dbname_shiftsync
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U changeuser -d change_dbname_shiftsync']
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:alpine
     restart: always
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
   server:
     build:
@@ -25,10 +30,12 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "5000:5000"
+      - '5000:5000'
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       NODE_ENV: development
       # Database
@@ -62,7 +69,7 @@ services:
         NEXT_PUBLIC_SERVER_BASE_URL: http://localhost:5000
     restart: always
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       - server
     environment:

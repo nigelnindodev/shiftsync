@@ -1,3 +1,4 @@
+// TODO: Replace hardcoded stats with API data when admin endpoints are built
 export default function AdminDashboardPage() {
   return (
     <div className="p-8">

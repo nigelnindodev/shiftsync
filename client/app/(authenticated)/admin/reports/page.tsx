@@ -1,3 +1,4 @@
+// TODO: Replace hardcoded fairness data with API data when admin endpoints are built
 import {
   Card,
   CardContent,

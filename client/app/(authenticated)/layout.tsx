@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import { NavLinks } from '@/components/nav-links.client';
 import { CalendarClock, LogOut, Menu, Loader2 } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { useTestingLogout } from '@/hooks/use-testing';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 function getRoleColor(role: string) {
   switch (role) {
@@ -36,9 +36,22 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, isLoading, isAuthenticated } = useProfile();
   const logoutMutation = useTestingLogout();
+
+  // Redirect bare /authenticated to role-appropriate landing page
+  useEffect(() => {
+    if (isAuthenticated && user && pathname === '/authenticated') {
+      const roleRoutes: Record<string, string> = {
+        ADMIN: '/admin',
+        MANAGER: '/manager/shifts',
+        STAFF: '/staff/schedule',
+      };
+      router.replace(roleRoutes[user.employee?.role ?? 'STAFF']);
+    }
+  }, [isAuthenticated, user, pathname, router]);
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {

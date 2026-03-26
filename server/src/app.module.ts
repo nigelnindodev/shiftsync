@@ -13,6 +13,7 @@ import { pinoLoggerConfig } from './common/logger';
 import { CommonModule } from './common/common.module';
 import { StaffingModule } from './staffing/staffing.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
+import { DatabaseSeedService } from './database/database-seed.service';
 
 @Module({
   imports: [
@@ -32,6 +33,6 @@ import { SchedulingModule } from './scheduling/scheduling.module';
     SchedulingModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, DatabaseSeedService],
 })
 export class AppModule {}

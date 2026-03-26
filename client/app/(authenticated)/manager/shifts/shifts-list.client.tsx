@@ -43,11 +43,35 @@ function localToUtc(dateStr: string, timeStr: string, tz: string): string {
   try {
     const [year, month, day] = dateStr.split('-').map(Number);
     const [hour, minute] = timeStr.split(':').map(Number);
-    const localDate = new Date(year, month - 1, day, hour, minute);
-    const localStr = localDate.toLocaleString('en-US', { timeZone: tz });
-    const utcFromLocal = new Date(localStr);
-    const offsetMs = utcFromLocal.getTime() - localDate.getTime();
-    return new Date(localDate.getTime() - offsetMs).toISOString();
+
+    // Create a Date that represents this wall-clock time in UTC
+    const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+
+    // Get the offset in this timezone at this moment
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(utcDate);
+
+    const get = (type: string) => parts.find((p) => p.type === type)?.value;
+    const tzYear = Number(get('year'));
+    const tzMonth = Number(get('month'));
+    const tzDay = Number(get('day'));
+    const tzHour = Number(get('hour'));
+    const tzMinute = Number(get('minute'));
+
+    // What UTC time would produce that wall-clock time in the target timezone?
+    const tzDate = new Date(
+      Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute),
+    );
+    const offsetMs = tzDate.getTime() - utcDate.getTime();
+
+    return new Date(utcDate.getTime() - offsetMs).toISOString();
   } catch {
     return '';
   }
@@ -94,14 +118,17 @@ interface SkillSlotInput {
   headcount: number;
 }
 
-export default function ManagerShifts() {
+export default function ShiftsList() {
   useProfile();
   const { data: locations = [] } = useLocations();
   const { data: skills = [] } = useSkills();
 
   // Use locationId 1 (Downtown) as default if not found
   const activeLocationId = 1;
-  const activeLocation = locations.find(l => l.id === activeLocationId) || { name: 'Downtown', timezone: 'America/New_York' };
+  const activeLocation = locations.find((l) => l.id === activeLocationId) || {
+    name: 'Downtown',
+    timezone: 'America/New_York',
+  };
   const TZ = activeLocation.timezone;
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -115,7 +142,7 @@ export default function ManagerShifts() {
   const { data: shifts = [], isLoading: isLoadingShifts } = useShifts(
     activeLocationId,
     startOfWeek.toISOString().split('T')[0],
-    endOfWeek.toISOString().split('T')[0]
+    endOfWeek.toISOString().split('T')[0],
   );
 
   const createShiftMutation = useCreateShift();
@@ -166,20 +193,23 @@ export default function ManagerShifts() {
       return;
     }
 
-    createShiftMutation.mutate({
-      locationId: activeLocationId,
-      startTime: startUtc,
-      endTime: endUtc,
-      skills: skillEntries,
-    }, {
-      onSuccess: () => {
-        setCreateOpen(false);
-        setShiftDate('');
-        setStartTime('09:00');
-        setEndTime('17:00');
-        setSkillSlots([{ id: 1, skillId: '', headcount: 1 }]);
-      }
-    });
+    createShiftMutation.mutate(
+      {
+        locationId: activeLocationId,
+        startTime: startUtc,
+        endTime: endUtc,
+        skills: skillEntries,
+      },
+      {
+        onSuccess: () => {
+          setCreateOpen(false);
+          setShiftDate('');
+          setStartTime('09:00');
+          setEndTime('17:00');
+          setSkillSlots([{ id: 1, skillId: '', headcount: 1 }]);
+        },
+      },
+    );
   };
 
   const handleCancel = (id: number) => {
@@ -205,7 +235,9 @@ export default function ManagerShifts() {
               <Plus className="w-4 h-4 rotate-45" />
             </Button>
             <span className="text-xs font-medium min-w-[140px] text-center">
-              {weekOffset === 0 ? 'This Week' : startOfWeek.toLocaleDateString()}
+              {weekOffset === 0
+                ? 'This Week'
+                : startOfWeek.toLocaleDateString()}
             </span>
             <Button
               variant="ghost"
@@ -305,9 +337,9 @@ export default function ManagerShifts() {
                             prev.map((s) =>
                               s.id === slot.id
                                 ? {
-                                  ...s,
-                                  headcount: parseInt(e.target.value) || 1,
-                                }
+                                    ...s,
+                                    headcount: parseInt(e.target.value) || 1,
+                                  }
                                 : s,
                             ),
                           );
@@ -334,7 +366,11 @@ export default function ManagerShifts() {
                   onClick={handleCreate}
                   disabled={!shiftDate || createShiftMutation.isPending}
                 >
-                  {createShiftMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Shift'}
+                  {createShiftMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Create Shift'
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -361,7 +397,10 @@ export default function ManagerShifts() {
             <TableBody>
               {shifts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={5}
+                    className="py-12 text-center text-muted-foreground"
+                  >
                     No shifts found for this period
                   </TableCell>
                 </TableRow>
@@ -403,7 +442,11 @@ export default function ManagerShifts() {
                           disabled={cancelShiftMutation.isPending}
                           onClick={() => handleCancel(shift.id)}
                         >
-                          {cancelShiftMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          {cancelShiftMutation.isPending ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
                         </Button>
                       )}
                     </TableCell>

@@ -28,11 +28,9 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useMySchedule } from '@/hooks/use-my-schedule';
 import { useRequestSwap, useRequestDrop } from '@/hooks/use-staff-actions';
 import { useTestingEmployees } from '@/hooks/use-testing';
-
 
 function formatTime(iso: string, timezone: string) {
   return new Date(iso).toLocaleTimeString('en-US', {
@@ -84,7 +82,10 @@ function getStateBadge(state: string) {
     DROP_PENDING_APPROVAL: { variant: 'outline', label: 'Drop Pending' },
     CANCELLED: { variant: 'destructive', label: 'Cancelled' },
   };
-  const info = map[state] || { variant: 'outline' as const, label: state.replace(/_/g, ' ') };
+  const info = map[state] || {
+    variant: 'outline' as const,
+    label: state.replace(/_/g, ' '),
+  };
   return <Badge variant={info.variant}>{info.label}</Badge>;
 }
 
@@ -93,7 +94,7 @@ export default function StaffScheduleView() {
   const [activeAssignmentId, setActiveAssignmentId] = useState<number | null>(
     null,
   );
-  const [swapTargetId, setSwapTargetId] = useState<string>('');
+  const [swapTargetId, setSwapTargetId] = useState('');
 
   const { start, end } = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
   const startDateStr = start.toISOString().split('T')[0];
@@ -111,34 +112,21 @@ export default function StaffScheduleView() {
 
   const handleRequestSwap = () => {
     if (!activeAssignmentId || !swapTargetId) return;
-
-    // We need the numeric ID from the test employees if available, 
-    // but the API expects externalId/email based on the DTO? 
-    // Actually apiClient.requestSwap expects RequestSwapDto { targetStaffMemberId: number }
-    // Wait, testing employees DTO has externalId (string). 
-    // I need to check the DTO in scheduling.ts again.
-    // RequestSwapDto { targetStaffMemberId: number }
-    // TestingEmployeeDto { externalId: string, email: string, name: string, role: string }
-    // This is a mismatch in the plan context vs types. 
-    // Let's check testing login... it uses identifier: string.
-    // Let's assume the staffMemberId is the internal numeric ID which we might not have in TestingEmployeeDto.
-    // Re-reading plan: "targetStaffMemberId: number". 
-    // Searching for where staffMemberId comes from...
-
-    const targetEmployee = employees.find(e => e.email === swapTargetId);
+    const targetEmployee = employees.find((e) => e.email === swapTargetId);
     if (!targetEmployee) return;
 
-    // TODO: How to get numeric ID from TestingEmployeeDto? 
-    // For now, let's use a placeholder or check if any other DTO has it.
-    // ShiftSync usually uses externalId for auth but internal IDs for domain objects.
-    // If I can't find it, I'll have to use email as a hack if the backend supports it, 
-    // but the DTO says number.
-
-    // Looking at the plan: "TestingEmployeeDto { externalId, email, name, role, homeTimezone? }"
-    // "EligibleStaffDto { staffMemberId, name, ... }"
-    // It seems Test Login only gives us externalId.
-
-    toast.error('Swap requires internal staff ID, which is missing from test employee DTO');
+    swapMutation.mutate(
+      {
+        assignmentId: activeAssignmentId,
+        data: { targetStaffMemberId: targetEmployee.id },
+      },
+      {
+        onSuccess: () => {
+          setActiveAssignmentId(null);
+          setSwapTargetId('');
+        },
+      },
+    );
   };
 
   const handleRequestDrop = (assignmentId: number) => {
@@ -168,9 +156,9 @@ export default function StaffScheduleView() {
             {weekOffset === 0
               ? 'This Week'
               : weekStart.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })}
+                  month: 'short',
+                  day: 'numeric',
+                })}
           </span>
           <Button
             variant="outline"
@@ -224,7 +212,11 @@ export default function StaffScheduleView() {
               onClick={handleRequestSwap}
               disabled={!swapTargetId || swapMutation.isPending}
             >
-              {swapMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Request'}
+              {swapMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Submit Request'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -256,7 +248,10 @@ export default function StaffScheduleView() {
                     }
                   </p>
                   <p className="text-lg font-bold">
-                    {getDateInTimezone(shift.startTime, shift.locationTimezone).getDate()}
+                    {getDateInTimezone(
+                      shift.startTime,
+                      shift.locationTimezone,
+                    ).getDate()}
                   </p>
                 </div>
 
@@ -265,7 +260,8 @@ export default function StaffScheduleView() {
                     <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-sm font-medium">
                       {formatTime(shift.startTime, shift.locationTimezone)}{' '}
-                      &ndash; {formatTime(shift.endTime, shift.locationTimezone)}
+                      &ndash;{' '}
+                      {formatTime(shift.endTime, shift.locationTimezone)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -303,7 +299,11 @@ export default function StaffScheduleView() {
                         disabled={dropMutation.isPending}
                         onClick={() => handleRequestDrop(shift.assignmentId)}
                       >
-                        {dropMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        {dropMutation.isPending ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                         Drop
                       </Button>
                     </div>

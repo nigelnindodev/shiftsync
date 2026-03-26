@@ -14,6 +14,9 @@ export class TestingLoginDto {
 
 export class TestingEmployeeDto {
   @ApiProperty()
+  id: number;
+
+  @ApiProperty()
   externalId: string;
 
   @ApiProperty()

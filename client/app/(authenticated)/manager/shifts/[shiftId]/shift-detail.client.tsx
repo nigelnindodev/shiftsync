@@ -1,8 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock, MapPin, Trash2, UserPlus, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  MapPin,
+  Trash2,
+  UserPlus,
+  Loader2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Card,
@@ -56,15 +63,23 @@ function getStateBadge(state: string): React.ReactElement {
 export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
   const { data: shift, isLoading: isLoadingShift } = useShift(shiftId);
   const slotIds = shift?.skills.map((s) => s.id) || [];
-  const { data: slots = [], isLoading: isLoadingSlots } = useAllSlotAssignments(shiftId, slotIds);
+  const { data: slots = [], isLoading: isLoadingSlots } = useAllSlotAssignments(
+    shiftId,
+    slotIds,
+  );
   const { data: locations = [] } = useLocations();
 
   const [activeSlotId, setActiveSlotId] = useState<number | null>(null);
 
-  const { data: eligibleStaff = [], isLoading: isLoadingEligible } = useEligibleStaff(
-    shiftId,
-    activeSlotId ?? 0,
-  );
+  // Auto-select when there's only one slot and none selected
+  const effectiveSlotId = useMemo(() => {
+    if (activeSlotId) return activeSlotId;
+    if (slots.length === 1) return slots[0].slotId;
+    return null;
+  }, [activeSlotId, slots]);
+
+  const { data: eligibleStaff = [], isLoading: isLoadingEligible } =
+    useEligibleStaff(shiftId, effectiveSlotId ?? 0);
 
   const assignStaffMutation = useAssignStaff();
   const removeAssignmentMutation = useRemoveAssignment();
@@ -77,16 +92,19 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
   const locationName = location?.name ?? 'Unknown';
 
   const handleAssign = (staffMemberId: number, staffName: string) => {
-    if (!activeSlotId) return;
-    assignStaffMutation.mutate({
-      shiftId,
-      slotId: activeSlotId,
-      data: { staffMemberId },
-    }, {
-      onSuccess: () => {
-        toast.success(`${staffName} assigned`);
-      }
-    });
+    if (!effectiveSlotId) return;
+    assignStaffMutation.mutate(
+      {
+        shiftId,
+        slotId: effectiveSlotId,
+        data: { staffMemberId },
+      },
+      {
+        onSuccess: () => {
+          toast.success(`${staffName} assigned`);
+        },
+      },
+    );
   };
 
   const handleRemove = (slotId: number, assignmentId: number) => {
@@ -178,12 +196,20 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
             ) : slots.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center">No skill slots defined for this shift.</p>
+              <p className="text-sm text-muted-foreground text-center">
+                No skill slots defined for this shift.
+              </p>
             ) : (
               slots.map((slot: SlotAssignmentsResponseDto) => (
-                <div key={slot.slotId} className={`space-y-3 p-3 rounded-lg border transition-colors ${activeSlotId === slot.slotId ? 'border-primary ring-1 ring-primary/20' : ''}`}>
+                <div
+                  key={slot.slotId}
+                  className={`space-y-3 p-3 rounded-lg border transition-colors ${activeSlotId === slot.slotId ? 'border-primary ring-1 ring-primary/20' : ''}`}
+                >
                   <div className="flex items-center justify-between">
-                    <div className="cursor-pointer" onClick={() => setActiveSlotId(slot.slotId)}>
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => setActiveSlotId(slot.slotId)}
+                    >
                       <p className="text-sm font-medium capitalize">
                         {slot.skillName}
                       </p>
@@ -203,7 +229,9 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                       </Badge>
                       <Button
                         size="sm"
-                        variant={activeSlotId === slot.slotId ? "default" : "outline"}
+                        variant={
+                          activeSlotId === slot.slotId ? 'default' : 'outline'
+                        }
                         className="h-8 gap-1.5"
                         onClick={() => setActiveSlotId(slot.slotId)}
                       >
@@ -228,14 +256,22 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                           size="sm"
                           className="text-muted-foreground hover:text-destructive h-7 px-2"
                           disabled={removeAssignmentMutation.isPending}
-                          onClick={() => handleRemove(slot.slotId, a.assignmentId)}
+                          onClick={() =>
+                            handleRemove(slot.slotId, a.assignmentId)
+                          }
                         >
-                          {removeAssignmentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          {removeAssignmentMutation.isPending ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
                         </Button>
                       </div>
                     ))}
                     {slot.assignments.length === 0 && (
-                      <p className="text-xs text-muted-foreground italic pl-1">No staff assigned yet.</p>
+                      <p className="text-xs text-muted-foreground italic pl-1">
+                        No staff assigned yet.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -257,14 +293,18 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
           <CardContent>
             {!activeSlotId ? (
               <div className="py-20 text-center border-2 border-dashed rounded-lg">
-                <p className="text-sm text-muted-foreground">Select a skill slot on the left to assign staff</p>
+                <p className="text-sm text-muted-foreground">
+                  Select a skill slot on the left to assign staff
+                </p>
               </div>
             ) : isLoadingEligible ? (
               <div className="py-20 flex justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : eligibleStaff.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-10">No eligible staff found for this slot.</p>
+              <p className="text-sm text-muted-foreground text-center py-10">
+                No eligible staff found for this slot.
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -278,7 +318,9 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                 <TableBody>
                   {eligibleStaff.map((staff) => (
                     <TableRow key={staff.staffMemberId}>
-                      <TableCell className="font-medium">{staff.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {staff.name}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {staff.hoursThisWeek}h
                       </TableCell>
@@ -296,7 +338,9 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -309,7 +353,11 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                             handleAssign(staff.staffMemberId, staff.name)
                           }
                         >
-                          {assignStaffMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                          {assignStaffMutation.isPending ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <UserPlus className="w-3 h-3" />
+                          )}
                           Assign
                         </Button>
                       </TableCell>

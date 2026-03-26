@@ -22,6 +22,9 @@ export class PendingApprovalDto {
   @ApiProperty({ description: 'Shift ID', example: 1 })
   shiftId: number;
 
+  @ApiProperty({ description: 'Shift skill (slot) ID', example: 3 })
+  slotId: number;
+
   @ApiProperty({ description: 'Shift start date', example: '2026-03-25' })
   shiftDate: string;
 

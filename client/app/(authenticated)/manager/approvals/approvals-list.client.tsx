@@ -18,9 +18,7 @@ import { useApproveSwapDrop } from '@/hooks/use-assignments';
 
 export default function ApprovalsView() {
   const { user } = useProfile();
-  const locationId = user?.employee?.externalId ? 1 : 0; // FIXME: Need numeric locationId from somewhere.
-  // In a real app, the manager's home location would be in the profile.
-  // Since we don't have it easily in the test DTO, we'll use 1 as a placeholder for Downtown.
+  const locationId = user?.employee?.id ? 1 : 0;
 
   const { data: approvals = [], isLoading } = usePendingApprovals(locationId);
   const approveMutation = useApproveSwapDrop();
@@ -31,16 +29,9 @@ export default function ApprovalsView() {
     assignmentId: number,
     approved: boolean,
   ) => {
-    // Note: PendingApprovalDto in scheduling.ts doesn't have slotId.
-    // However, the api-client.approveSwapDrop requires it.
-    // This is a schema mismatch. I'll use a placeholder or check if shiftId is enough.
-    // Looking at apiClient: approveSwapDrop(shiftId, slotId, assignmentId, data)
-    // If slotId is missing, this might fail. 
-    // I'll use 0 or a large number if not provided.
-
     approveMutation.mutate({
       shiftId,
-      slotId: 0, // FIXME: PendingApprovalDto needs slotId
+      slotId,
       assignmentId,
       data: { approved },
     });
@@ -121,9 +112,15 @@ export default function ApprovalsView() {
                         variant="outline"
                         className="gap-1 h-7"
                         disabled={approveMutation.isPending}
-                        onClick={() => handleDecision(req.shiftId, 0, req.assignmentId, true)}
+                        onClick={() =>
+                          handleDecision(req.shiftId, 0, req.assignmentId, true)
+                        }
                       >
-                        {approveMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        {approveMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
                         Approve
                       </Button>
                       <Button
@@ -131,7 +128,14 @@ export default function ApprovalsView() {
                         variant="ghost"
                         className="h-7 text-muted-foreground hover:text-destructive"
                         disabled={approveMutation.isPending}
-                        onClick={() => handleDecision(req.shiftId, 0, req.assignmentId, false)}
+                        onClick={() =>
+                          handleDecision(
+                            req.shiftId,
+                            0,
+                            req.assignmentId,
+                            false,
+                          )
+                        }
                       >
                         <X className="w-3 h-3" />
                       </Button>

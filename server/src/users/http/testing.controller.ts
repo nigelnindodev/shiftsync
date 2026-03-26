@@ -52,6 +52,7 @@ export class TestingController {
     const employees = await this.employeeRepo.findAllWithUser();
 
     return employees.map((emp) => ({
+      id: emp.id,
       externalId: emp.externalId,
       email: emp.user.email,
       name: emp.user.name,
@@ -71,11 +72,13 @@ export class TestingController {
   ): Promise<TestingLoginResponseDto> {
     this.assertTestingEnabled();
 
-    let user = await this.usersRepo.findByExternalId(dto.identifier);
-
-    if (user.isNothing) {
-      user = await this.usersRepo.findByEmail(dto.identifier);
-    }
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        dto.identifier,
+      );
+    const user = isUuid
+      ? await this.usersRepo.findByExternalId(dto.identifier)
+      : await this.usersRepo.findByEmail(dto.identifier);
 
     if (user.isNothing) {
       throw new NotFoundException(
@@ -113,6 +116,7 @@ export class TestingController {
     });
 
     return {
+      id: employee.id,
       externalId: user.value.externalId,
       email: user.value.email,
       name: user.value.name,

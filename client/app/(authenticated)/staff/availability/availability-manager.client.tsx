@@ -54,25 +54,24 @@ const DAY_LABELS: Record<string, string> = {
 
 export default function AvailabilityManager() {
   const { user } = useProfile();
-  const staffId = user?.employee?.externalId ? 1 : 0; // FIXME: We need the numeric staffId. 
-  // In this system, externalId is a UUID. The API client expects a number for staffId.
-  // This is a known issue in the test environment where we don't have the numeric ID easily.
-  // For now, I'll use a placeholder or assume the backend might handle 'me'.
-  // But wait, the hook uses staffId in the key and function.
-  // Let's check getProfile response again.
+  const staffId = user?.employee?.id ?? 0;
 
-  const { data: windows = [], isLoading: isLoadingWindows } = useAvailability(staffId);
+  const { data: windows = [], isLoading: isLoadingWindows } =
+    useAvailability(staffId);
   const [dateRange] = useState(() => {
     const start = new Date().toISOString().split('T')[0];
-    const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
     return { startDate: start, endDate: end };
   });
 
-  const { data: exceptions = [], isLoading: isLoadingExceptions } = useAvailabilityExceptions(
-    staffId,
-    dateRange?.startDate ?? '',
-    dateRange?.endDate ?? '',
-  );
+  const { data: exceptions = [], isLoading: isLoadingExceptions } =
+    useAvailabilityExceptions(
+      staffId,
+      dateRange?.startDate ?? '',
+      dateRange?.endDate ?? '',
+    );
 
   const upsertWindow = useUpsertAvailability();
   const deleteWindow = useDeleteAvailability();
@@ -95,16 +94,19 @@ export default function AvailabilityManager() {
       toast.error('Start time must be before end time');
       return;
     }
-    upsertWindow.mutate({
-      dayOfWeek: newDay as DayOfWeek,
-      wallStartTime: newStart,
-      wallEndTime: newEnd,
-    }, {
-      onSuccess: () => {
-        setAddWindowOpen(false);
-        setNewDay('');
-      }
-    });
+    upsertWindow.mutate(
+      {
+        dayOfWeek: newDay as DayOfWeek,
+        wallStartTime: newStart,
+        wallEndTime: newEnd,
+      },
+      {
+        onSuccess: () => {
+          setAddWindowOpen(false);
+          setNewDay('');
+        },
+      },
+    );
   };
 
   const handleDeleteWindow = (id: number) => {
@@ -117,18 +119,21 @@ export default function AvailabilityManager() {
       toast.error('Start time must be before end time');
       return;
     }
-    upsertException.mutate({
-      date: newExceptionDate,
-      isAvailable: newExceptionAvailable,
-      ...(newExceptionAvailable
-        ? { wallStartTime: newExceptionStart, wallEndTime: newExceptionEnd }
-        : {}),
-    }, {
-      onSuccess: () => {
-        setAddExceptionOpen(false);
-        setNewExceptionDate('');
-      }
-    });
+    upsertException.mutate(
+      {
+        date: newExceptionDate,
+        isAvailable: newExceptionAvailable,
+        ...(newExceptionAvailable
+          ? { wallStartTime: newExceptionStart, wallEndTime: newExceptionEnd }
+          : {}),
+      },
+      {
+        onSuccess: () => {
+          setAddExceptionOpen(false);
+          setNewExceptionDate('');
+        },
+      },
+    );
   };
 
   const handleDeleteException = (id: number) => {
@@ -169,7 +174,10 @@ export default function AvailabilityManager() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Day</Label>
-                    <Select value={newDay} onValueChange={(val) => setNewDay(val as DayOfWeek)}>
+                    <Select
+                      value={newDay}
+                      onValueChange={(val) => setNewDay(val as DayOfWeek)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select day..." />
                       </SelectTrigger>
@@ -208,8 +216,15 @@ export default function AvailabilityManager() {
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleAddWindow} disabled={!newDay || upsertWindow.isPending}>
-                    {upsertWindow.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add Window'}
+                  <Button
+                    onClick={handleAddWindow}
+                    disabled={!newDay || upsertWindow.isPending}
+                  >
+                    {upsertWindow.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Add Window'
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -246,14 +261,19 @@ export default function AvailabilityManager() {
                             >
                               <Clock className="w-3.5 h-3.5" />
                               <span>
-                                {w.wallStartTime.slice(0, 5)} – {w.wallEndTime.slice(0, 5)}
+                                {w.wallStartTime.slice(0, 5)} –{' '}
+                                {w.wallEndTime.slice(0, 5)}
                               </span>
                               <button
                                 onClick={() => handleDeleteWindow(w.id)}
                                 disabled={deleteWindow.isPending}
                                 className="ml-1 text-muted-foreground/50 hover:text-destructive transition-colors"
                               >
-                                {deleteWindow.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                                {deleteWindow.isPending ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <X className="w-3.5 h-3.5" />
+                                )}
                               </button>
                             </div>
                           ))}
@@ -345,7 +365,11 @@ export default function AvailabilityManager() {
                     onClick={handleAddException}
                     disabled={!newExceptionDate || upsertException.isPending}
                   >
-                    {upsertException.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add Exception'}
+                    {upsertException.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Add Exception'
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -381,7 +405,8 @@ export default function AvailabilityManager() {
                       {ex.isAvailable ? (
                         <span className="text-sm text-muted-foreground">
                           <Clock className="w-3.5 h-3.5 inline mr-1" />
-                          {ex.wallStartTime?.slice(0, 5)} – {ex.wallEndTime?.slice(0, 5)}
+                          {ex.wallStartTime?.slice(0, 5)} –{' '}
+                          {ex.wallEndTime?.slice(0, 5)}
                         </span>
                       ) : (
                         <Badge variant="destructive" className="text-[10px]">
@@ -394,7 +419,11 @@ export default function AvailabilityManager() {
                       disabled={deleteException.isPending}
                       className="text-muted-foreground/50 hover:text-destructive transition-colors"
                     >
-                      {deleteException.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      {deleteException.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 ))}

@@ -24,6 +24,7 @@ export type AssignmentState =
 // ---------------------------------------------------------------------------
 
 export interface TestingEmployeeDto {
+  id: number;
   externalId: string;
   email: string;
   name: string;
@@ -165,6 +166,7 @@ export interface PendingApprovalDto {
   staffName: string;
   state: PendingApprovalState;
   shiftId: number;
+  slotId: number;
   shiftDate: string;
   shiftTime: string;
   locationId: number;

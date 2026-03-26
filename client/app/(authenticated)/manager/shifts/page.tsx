@@ -1,5 +1,5 @@
-import ManagerShifts from './create-shift.client';
+import ShiftsList from './shifts-list.client';
 
 export default function ManagerShiftsPage() {
-  return <ManagerShifts />;
+  return <ShiftsList />;
 }
