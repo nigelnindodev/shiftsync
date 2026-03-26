@@ -37,6 +37,13 @@ import { useProfile } from '@/hooks/use-profile';
 import { useShifts, useCreateShift, useCancelShift } from '@/hooks/use-shifts';
 import { useLocations, useSkills } from '@/hooks/use-reference-data';
 
+function formatDateYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /** Converts a local date + time in the given IANA timezone to a UTC ISO string. */
 function localToUtc(dateStr: string, timeStr: string, tz: string): string {
   if (!dateStr || !timeStr) return '';
@@ -124,9 +131,9 @@ export default function ShiftsList() {
   const { data: locations = [] } = useLocations();
   const { data: skills = [] } = useSkills();
 
-  const activeLocationId = locations[0]?.id ?? 1;
+  const activeLocationId = locations[0]?.id ?? 0;
   const activeLocation = locations.find((l) => l.id === activeLocationId);
-  const TZ = activeLocation?.timezone ?? 'America/New_York';
+  const TZ = activeLocation?.timezone ?? 'UTC';
 
   const [weekOffset, setWeekOffset] = useState(0);
   const now = new Date();
@@ -137,10 +144,13 @@ export default function ShiftsList() {
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 7);
 
+  const startDateStr = formatDateYMD(startOfWeek);
+  const endDateStr = formatDateYMD(endOfWeek);
+
   const { data: shifts = [], isLoading: isLoadingShifts } = useShifts(
     activeLocationId,
-    startOfWeek.toISOString().split('T')[0],
-    endOfWeek.toISOString().split('T')[0],
+    startDateStr,
+    endDateStr,
   );
 
   const createShiftMutation = useCreateShift();
@@ -210,8 +220,11 @@ export default function ShiftsList() {
     );
   };
 
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+
   const handleCancel = (id: number) => {
-    cancelShiftMutation.mutate(id);
+    setCancellingId(id);
+    cancelShiftMutation.mutate(id, { onSettled: () => setCancellingId(null) });
   };
 
   return (
@@ -437,10 +450,10 @@ export default function ShiftsList() {
                           variant="ghost"
                           size="sm"
                           className="text-muted-foreground hover:text-destructive"
-                          disabled={cancelShiftMutation.isPending}
+                          disabled={cancellingId === shift.id}
                           onClick={() => handleCancel(shift.id)}
                         >
-                          {cancelShiftMutation.isPending ? (
+                          {cancellingId === shift.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <Trash2 className="w-3.5 h-3.5" />

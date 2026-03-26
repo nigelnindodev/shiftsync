@@ -20,6 +20,13 @@ const PENDING_STATES = new Set([
   'DROP_PENDING_APPROVAL',
 ]);
 
+function formatDateYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function getWeekRange(weekOffset: number) {
   const now = new Date();
   const day = now.getDay();
@@ -28,7 +35,11 @@ function getWeekRange(weekOffset: number) {
   monday.setHours(0, 0, 0, 0);
   const nextMonday = new Date(monday);
   nextMonday.setDate(monday.getDate() + 7);
-  return { start: monday, end: nextMonday };
+  return {
+    startDate: formatDateYMD(monday),
+    endDate: formatDateYMD(nextMonday),
+    weekLabel: monday,
+  };
 }
 
 function formatTime(iso: string, timezone: string) {
@@ -51,29 +62,40 @@ function formatDate(iso: string, timezone: string) {
 
 export default function SwapRequestsView() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const { start, end } = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
-  const startDateStr = start.toISOString().split('T')[0];
-  const endDateStr = end.toISOString().split('T')[0];
-
-  const { data: schedule = [], isLoading } = useMySchedule(
-    startDateStr,
-    endDateStr,
+  const { startDate, endDate, weekLabel } = useMemo(
+    () => getWeekRange(weekOffset),
+    [weekOffset],
   );
 
+  const {
+    data: schedule,
+    isLoading,
+    isError,
+    refetch,
+  } = useMySchedule(startDate, endDate);
+
   const pendingRequests = useMemo(
-    () => schedule.filter((entry) => PENDING_STATES.has(entry.state)),
+    () => (schedule ?? []).filter((entry) => PENDING_STATES.has(entry.state)),
     [schedule],
   );
 
   const acceptSwap = useAcceptSwap();
   const claimDrop = useClaimDrop();
+  const [pendingAcceptId, setPendingAcceptId] = useState<number | null>(null);
+  const [pendingClaimId, setPendingClaimId] = useState<number | null>(null);
 
   const handleAccept = (assignmentId: number) => {
-    acceptSwap.mutate(assignmentId);
+    setPendingAcceptId(assignmentId);
+    acceptSwap.mutate(assignmentId, {
+      onSettled: () => setPendingAcceptId(null),
+    });
   };
 
   const handleClaim = (assignmentId: number) => {
-    claimDrop.mutate(assignmentId);
+    setPendingClaimId(assignmentId);
+    claimDrop.mutate(assignmentId, {
+      onSettled: () => setPendingClaimId(null),
+    });
   };
 
   return (
@@ -96,7 +118,7 @@ export default function SwapRequestsView() {
           <span className="text-sm font-medium min-w-[160px] text-center">
             {weekOffset === 0
               ? 'This Week'
-              : start.toLocaleDateString('en-US', {
+              : weekLabel.toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                 })}
@@ -116,6 +138,17 @@ export default function SwapRequestsView() {
           <div className="py-20 flex justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        ) : isError ? (
+          <Card className="card-shadow">
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground mb-3">
+                Failed to load schedule
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
         ) : pendingRequests.length === 0 ? (
           <Card className="card-shadow">
             <CardContent className="py-12 text-center">
@@ -125,93 +158,98 @@ export default function SwapRequestsView() {
             </CardContent>
           </Card>
         ) : (
-          pendingRequests.map((entry) => (
-            <Card key={entry.assignmentId} className="card-shadow">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-16 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    {
-                      formatDate(entry.startTime, entry.locationTimezone).split(
-                        ' ',
-                      )[0]
-                    }
-                  </p>
-                  <p className="text-lg font-bold">
-                    {new Date(entry.startTime).toLocaleDateString('en-US', {
-                      day: 'numeric',
-                      timeZone: entry.locationTimezone,
-                    })}
-                  </p>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-sm font-medium">
-                      {formatTime(entry.startTime, entry.locationTimezone)}{' '}
-                      &ndash;{' '}
-                      {formatTime(entry.endTime, entry.locationTimezone)}
-                    </span>
-                    <Badge
-                      variant={
-                        entry.state === 'SWAP_PENDING_APPROVAL'
-                          ? 'secondary'
-                          : 'outline'
+          pendingRequests.map((entry) => {
+            const isAccepting = pendingAcceptId === entry.assignmentId;
+            const isClaiming = pendingClaimId === entry.assignmentId;
+            return (
+              <Card key={entry.assignmentId} className="card-shadow">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="w-16 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      {
+                        formatDate(
+                          entry.startTime,
+                          entry.locationTimezone,
+                        ).split(' ')[0]
                       }
-                    >
-                      {entry.state === 'SWAP_PENDING_APPROVAL'
-                        ? 'Swap'
-                        : 'Drop'}
-                    </Badge>
+                    </p>
+                    <p className="text-lg font-bold">
+                      {new Date(entry.startTime).toLocaleDateString('en-US', {
+                        day: 'numeric',
+                        timeZone: entry.locationTimezone,
+                      })}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {entry.locationName}
-                    </span>
-                    <span className="text-muted-foreground/40">&middot;</span>
-                    <span className="text-sm text-muted-foreground capitalize">
-                      {entry.skillName}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex gap-2">
-                  {entry.state === 'SWAP_PENDING_APPROVAL' ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      disabled={acceptSwap.isPending}
-                      onClick={() => handleAccept(entry.assignmentId)}
-                    >
-                      {acceptSwap.isPending ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      Accept
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      disabled={claimDrop.isPending}
-                      onClick={() => handleClaim(entry.assignmentId)}
-                    >
-                      {claimDrop.isPending ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      Claim
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {formatTime(entry.startTime, entry.locationTimezone)}{' '}
+                        &ndash;{' '}
+                        {formatTime(entry.endTime, entry.locationTimezone)}
+                      </span>
+                      <Badge
+                        variant={
+                          entry.state === 'SWAP_PENDING_APPROVAL'
+                            ? 'secondary'
+                            : 'outline'
+                        }
+                      >
+                        {entry.state === 'SWAP_PENDING_APPROVAL'
+                          ? 'Swap'
+                          : 'Drop'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {entry.locationName}
+                      </span>
+                      <span className="text-muted-foreground/40">&middot;</span>
+                      <span className="text-sm text-muted-foreground capitalize">
+                        {entry.skillName}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {entry.state === 'SWAP_PENDING_APPROVAL' ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        disabled={isAccepting}
+                        onClick={() => handleAccept(entry.assignmentId)}
+                      >
+                        {isAccepting ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        Accept
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        disabled={isClaiming}
+                        onClick={() => handleClaim(entry.assignmentId)}
+                      >
+                        {isClaiming ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        Claim
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

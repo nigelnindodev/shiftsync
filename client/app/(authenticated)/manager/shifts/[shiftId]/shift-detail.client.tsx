@@ -88,6 +88,7 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
 
   const assignStaffMutation = useAssignStaff();
   const removeAssignmentMutation = useRemoveAssignment();
+  const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
 
   // Find location for timezone
   const location = shift
@@ -104,20 +105,16 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
         slotId: effectiveSlotId,
         data: { staffMemberId },
       },
-      {
-        onSuccess: () => {
-          toast.success(`${staffName} assigned`);
-        },
-      },
+      { onSuccess: () => toast.success(`${staffName} assigned`) },
     );
   };
 
   const handleRemove = (slotId: number, assignmentId: number) => {
-    removeAssignmentMutation.mutate({
-      shiftId,
-      slotId,
-      assignmentId,
-    });
+    setPendingRemoveId(assignmentId);
+    removeAssignmentMutation.mutate(
+      { shiftId, slotId, assignmentId },
+      { onSettled: () => setPendingRemoveId(null) },
+    );
   };
 
   if (isLoadingShift) {
@@ -271,12 +268,12 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
                           variant="ghost"
                           size="sm"
                           className="text-muted-foreground hover:text-destructive h-7 px-2"
-                          disabled={removeAssignmentMutation.isPending}
+                          disabled={pendingRemoveId === a.assignmentId}
                           onClick={() =>
                             handleRemove(slot.slotId, a.assignmentId)
                           }
                         >
-                          {removeAssignmentMutation.isPending ? (
+                          {pendingRemoveId === a.assignmentId ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <Trash2 className="w-3.5 h-3.5" />
@@ -301,13 +298,13 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
           <CardHeader>
             <CardTitle className="text-base">Eligible Staff</CardTitle>
             <CardDescription>
-              {activeSlotId
-                ? `Available staff for ${slots.find((s: SlotAssignmentsResponseDto) => s.slotId === activeSlotId)?.skillName || 'selected slot'}`
+              {effectiveSlotId
+                ? `Available staff for ${slots.find((s: SlotAssignmentsResponseDto) => s.slotId === effectiveSlotId)?.skillName || 'selected slot'}`
                 : 'Select a skill slot to see eligible staff'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!activeSlotId ? (
+            {!effectiveSlotId ? (
               <div className="py-20 text-center border-2 border-dashed rounded-lg">
                 <p className="text-sm text-muted-foreground">
                   Select a skill slot on the left to assign staff
