@@ -445,12 +445,8 @@ export async function runSeed(
   weekStart = weekStart.with({ hour: 0, minute: 0, second: 0, nanosecond: 0 });
 
   for (const location of savedLocations) {
-    const locTimezone = location.timezone;
-
     for (let dayOffset = 1; dayOffset <= 14; dayOffset++) {
-      const baseDate = weekStart
-        .add({ days: dayOffset })
-        .with({ timeZone: locTimezone });
+      const baseDate = weekStart.add({ days: dayOffset });
 
       const shiftDate = new Date(
         baseDate
@@ -580,11 +576,10 @@ export async function runSeed(
 
   // --- Scenarios ---
   const downtown = savedLocations[0];
-  const downtownTimezone = downtown.timezone;
 
   // 1. The Sunday Night Chaos: Upcoming Sunday 7pm-11pm at Downtown, assigned to James Bartender
   // Find next Sunday from weekStart
-  let nextSunday = weekStart.with({ timeZone: downtownTimezone });
+  let nextSunday = weekStart;
   while (nextSunday.dayOfWeek !== 7) {
     nextSunday = nextSunday.add({ days: 1 });
   }
@@ -653,7 +648,7 @@ export async function runSeed(
 
   // 2. The Overtime Trap: John Bartender gets 5x 8h shifts (40 hours) this current week
   // Use weekStart which is already Monday of current week
-  const thisMonday = weekStart.with({ timeZone: downtownTimezone });
+  const thisMonday = weekStart;
   for (let d = 0; d < 5; d++) {
     const otDate = thisMonday.add({ days: d });
     const otStart = new Date(
