@@ -309,24 +309,6 @@ function formatDateYMD(date: Date): string {
 
 ## Docker
 
-### Postgres Healthcheck
-
-Add healthcheck in `docker-compose.yml` to ensure database is ready before server starts:
-
-```yaml
-postgres:
-  healthcheck:
-    test: ['CMD-SHELL', 'pg_isready -U user -d dbname']
-    interval: 5s
-    timeout: 3s
-    retries: 10
-
-server:
-  depends_on:
-    postgres:
-      condition: service_healthy
-```
-
 ### Seed on Startup
 
 The server runs seed on every startup via `DatabaseSeedService` implementing `OnApplicationBootstrap`. The service injects the app's `DataSource` (not a separate connection) and uses `require.main === module` guard in the seed script to allow both CLI execution and NestJS import.
