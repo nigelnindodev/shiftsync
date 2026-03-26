@@ -89,6 +89,14 @@ export const apiClient = {
     await handleResponse(response);
   },
 
+  async resetDatabase(): Promise<{ message: string }> {
+    const response = await fetch(`${serverUrl}/testing/reset-database`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    return handleResponse(response);
+  },
+
   // ---------------------------------------------------------------------------
   // Reference Data
   // ---------------------------------------------------------------------------

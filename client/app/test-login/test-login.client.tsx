@@ -17,9 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CalendarClock, Loader2 } from 'lucide-react';
+import { CalendarClock, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { useTestingEmployees, useTestingLogin } from '@/hooks/use-testing';
+import {
+  useTestingEmployees,
+  useTestingLogin,
+  useResetDatabase,
+} from '@/hooks/use-testing';
 import type { EmployeeRole } from '@/types/scheduling';
 
 const roleLabels: Record<EmployeeRole, string> = {
@@ -42,6 +46,7 @@ export default function TestLoginPage() {
   const { data: employees = [], isLoading: isLoadingEmployees } =
     useTestingEmployees();
   const loginMutation = useTestingLogin();
+  const resetDbMutation = useResetDatabase();
 
   const filteredEmployees = selectedRole
     ? employees.filter((e) => e.role === selectedRole)
@@ -139,6 +144,39 @@ export default function TestLoginPage() {
               </>
             ) : (
               'Log In'
+            )}
+          </Button>
+
+          <div className="border-t" />
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              if (
+                confirm(
+                  'Are you sure you want to reset the database? All data will be lost.',
+                )
+              ) {
+                resetDbMutation.mutate(undefined, {
+                  onSuccess: () => {
+                    window.location.reload();
+                  },
+                });
+              }
+            }}
+            disabled={resetDbMutation.isPending}
+          >
+            {resetDbMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Resetting...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset Database
+              </>
             )}
           </Button>
         </CardContent>

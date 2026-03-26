@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { DataSource } from 'typeorm';
 import { EmployeeRepository } from '../employee.repository';
 import { UsersRepository } from '../users.repository';
 import { JwtService } from 'src/security/jwt/jwt.service';
@@ -24,6 +25,7 @@ import {
   TestingLoginResponseDto,
   TestingEmployeeDto,
 } from '../dto/testing-login.dto';
+import { runSeed } from 'src/seed/seed';
 
 @ApiTags('testing')
 @Controller('testing')
@@ -35,6 +37,7 @@ export class TestingController {
     private readonly usersRepo: UsersRepository,
     private readonly jwtService: JwtService,
     private readonly config: AppConfigService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private assertTestingEnabled(): void {
@@ -137,5 +140,33 @@ export class TestingController {
       secure: this.config.isProduction,
       sameSite: 'lax',
     });
+  }
+
+  @Post('reset-database')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset database and re-run seed' })
+  @ApiResponse({
+    status: 200,
+    description: 'Database reset and seeded successfully',
+  })
+  async resetDatabase(): Promise<{ message: string }> {
+    this.assertTestingEnabled();
+    this.logger.log('Resetting database...');
+
+    const entities = this.dataSource.entityMetadatas;
+    const tableNames = entities
+      .map((entity) => `"${entity.tableName}"`)
+      .join(', ');
+
+    if (tableNames.length > 0) {
+      await this.dataSource.query('SET CONSTRAINTS ALL DEFERRED;');
+      await this.dataSource.query(`TRUNCATE TABLE ${tableNames} CASCADE;`);
+      this.logger.log('All tables truncated');
+    }
+
+    await runSeed(this.dataSource, false);
+    this.logger.log('Database reset and seed completed');
+
+    return { message: 'Database reset and seeded successfully' };
   }
 }

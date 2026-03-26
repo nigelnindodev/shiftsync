@@ -9,12 +9,12 @@ export class DatabaseSeedService implements OnApplicationBootstrap {
   constructor(private readonly dataSource: DataSource) {}
 
   async onApplicationBootstrap() {
-    this.logger.log('Running database seed...');
+    this.logger.log('Checking if seed data exists...');
     try {
-      await runSeed(this.dataSource);
-      this.logger.log('Database seed completed');
+      await runSeed(this.dataSource, true);
+      this.logger.log('Database seed check completed');
     } catch (error) {
-      this.logger.error('Database seed failed', error);
+      this.logger.error('Database seed check failed', error);
     }
   }
 }

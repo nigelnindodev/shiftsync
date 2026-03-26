@@ -34,3 +34,15 @@ export function useTestingLogout() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+export function useResetDatabase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.resetDatabase(),
+    onSuccess: () => {
+      queryClient.clear();
+      toast.success('Database reset successfully');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
