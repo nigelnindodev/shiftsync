@@ -800,14 +800,15 @@ export async function runSeed(
     published = true,
   ): Promise<Shift> {
     const base = weekStart.add({ days: dayOffset });
+    const baseInLocTz = base.withTimeZone(location.timezone);
     const scheduleId = published
       ? schedulesByLocation[locationIdx].current.id
       : schedulesByLocation[locationIdx].next.id;
     const shift = await upsertShift(
       shiftRepo,
       location.id,
-      toDate(base, 10),
-      toDate(base, 18),
+      toDate(baseInLocTz, 10),
+      toDate(baseInLocTz, 18),
       published ? ShiftState.LOCKED : ShiftState.OPEN,
       scheduleId,
     );
@@ -892,11 +893,12 @@ export async function runSeed(
     { locIdx: 2, candidates: [james.id, tomas.id, priya.id] }, // Pier
     { locIdx: 3, candidates: [lisa.id, tomas.id, james.id] }, // Harbor
   ];
-  for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
+  for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
     for (const { locIdx, candidates } of eveningConfigs) {
       for (const fridayOffset of [4, 5]) {
         // Fri=4, Sat=5 from Monday
         const base = weekStart.add({ days: weekOffset * 7 + fridayOffset });
+        const baseInLocTz = base.withTimeZone(L[locIdx].timezone);
         const isCurrentWeek = weekOffset === 0;
         const scheduleId = isCurrentWeek
           ? schedulesByLocation[locIdx].current.id
@@ -904,8 +906,8 @@ export async function runSeed(
         const eveningShift = await upsertShift(
           shiftRepo,
           L[locIdx].id,
-          toDate(base, 18),
-          toDate(base, 23),
+          toDate(baseInLocTz, 18),
+          toDate(baseInLocTz, 23),
           isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
           scheduleId,
         );
@@ -1154,8 +1156,9 @@ export async function runSeed(
   const alexandra = savedStaff[8].employee;
 
   // Instance A: Pier shift 09:00–17:00 PT = 12:00–20:00 ET — outside her ET window
-  for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
+  for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
     const base = weekStart.add({ days: weekOffset * 7 + 1 }); // Tuesday
+    const baseInLocTz = base.withTimeZone(L[2].timezone); // Pier is PT
     const isCurrentWeek = weekOffset === 0;
     const scheduleId = isCurrentWeek
       ? schedulesByLocation[2].current.id
@@ -1163,8 +1166,8 @@ export async function runSeed(
     const tzShift = await upsertShift(
       shiftRepo,
       L[2].id,
-      toDate(base, 9),
-      toDate(base, 17),
+      toDate(baseInLocTz, 9),
+      toDate(baseInLocTz, 17),
       isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
       scheduleId,
     );
@@ -1173,8 +1176,9 @@ export async function runSeed(
   }
 
   // Instance B: Downtown shift 09:00–17:00 ET — clearly within her window
-  for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
+  for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
     const base = weekStart.add({ days: weekOffset * 7 + 2 }); // Wednesday
+    const baseInLocTz = base.withTimeZone(L[0].timezone); // Downtown is ET
     const isCurrentWeek = weekOffset === 0;
     const scheduleId = isCurrentWeek
       ? schedulesByLocation[0].current.id
@@ -1182,8 +1186,8 @@ export async function runSeed(
     const tzShift = await upsertShift(
       shiftRepo,
       L[0].id,
-      toDate(base, 9),
-      toDate(base, 17),
+      toDate(baseInLocTz, 9),
+      toDate(baseInLocTz, 17),
       isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
       scheduleId,
     );
