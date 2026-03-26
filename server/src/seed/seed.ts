@@ -277,22 +277,22 @@ export async function runSeed(
   // -------------------------------------------------------------------------
   const locations = await Promise.all([
     upsertLocation(locationRepo, {
-      name: 'Downtown',
+      name: 'Downtown New York',
       timezone: 'America/New_York',
       brand: 'Coastal Eats',
     }),
     upsertLocation(locationRepo, {
-      name: 'Midtown',
+      name: 'Midtown New York',
       timezone: 'America/New_York',
       brand: 'Coastal Eats',
     }),
     upsertLocation(locationRepo, {
-      name: 'Pier',
+      name: 'Pier Los Angeles',
       timezone: 'America/Los_Angeles',
       brand: 'Coastal Eats',
     }),
     upsertLocation(locationRepo, {
-      name: 'Harbor',
+      name: 'Harbor Los Angeles',
       timezone: 'America/Los_Angeles',
       brand: 'Coastal Eats',
     }),

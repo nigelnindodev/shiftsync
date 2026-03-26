@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { useProfile } from '@/hooks/use-profile';
 import { useShifts, useCreateShift, useCancelShift } from '@/hooks/use-shifts';
-import { useLocations, useSkills } from '@/hooks/use-reference-data';
+import { useManagerLocations, useSkills } from '@/hooks/use-reference-data';
 
 function formatDateYMD(date: Date): string {
   const y = date.getFullYear();
@@ -128,11 +128,15 @@ interface SkillSlotInput {
 export default function ShiftsList() {
   useProfile(); // intentionally invoked for auth side-effects
 
-  const { data: locations = [] } = useLocations();
+  const { data: locations = [], isLoading: isLoadingLocations } =
+    useManagerLocations();
   const { data: skills = [] } = useSkills();
 
-  const activeLocationId = locations[0]?.id ?? 0;
-  const activeLocation = locations.find((l) => l.id === activeLocationId);
+  const [locationId, setLocationId] = useState<number | null>(null);
+
+  const selectedLocationId = locationId ?? locations[0]?.id ?? 0;
+
+  const activeLocation = locations.find((l) => l.id === selectedLocationId);
   const TZ = activeLocation?.timezone ?? 'UTC';
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -148,7 +152,7 @@ export default function ShiftsList() {
   const endDateStr = formatDateYMD(endOfWeek);
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useShifts(
-    activeLocationId,
+    selectedLocationId,
     startDateStr,
     endDateStr,
   );
@@ -203,7 +207,7 @@ export default function ShiftsList() {
 
     createShiftMutation.mutate(
       {
-        locationId: activeLocationId,
+        locationId: selectedLocationId,
         startTime: startUtc,
         endTime: endUtc,
         skills: skillEntries,
@@ -237,6 +241,22 @@ export default function ShiftsList() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Select
+            value={String(selectedLocationId)}
+            onValueChange={(val) => setLocationId(Number(val))}
+            disabled={isLoadingLocations || locations.length === 0}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Select location" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={String(loc.id)}>
+                  {loc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-1 border rounded-lg px-1 py-1 bg-background shadow-sm mr-2">
             <Button
               variant="ghost"

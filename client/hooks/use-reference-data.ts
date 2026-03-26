@@ -12,6 +12,14 @@ export function useLocations() {
   });
 }
 
+export function useManagerLocations() {
+  return useQuery<LocationResponseDto[], Error>({
+    queryKey: ['manager-locations'],
+    queryFn: () => apiClient.getManagerLocations(),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useSkills() {
   return useQuery<SkillResponseDto[], Error>({
     queryKey: ['skills'],

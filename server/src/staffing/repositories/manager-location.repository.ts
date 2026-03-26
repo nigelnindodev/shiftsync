@@ -58,7 +58,10 @@ export class ManagerLocationRepository {
   }
 
   async findLocationsByManager(managerId: number): Promise<ManagerLocation[]> {
-    return this.repo.find({ where: { managerId } });
+    return this.repo.find({
+      where: { managerId },
+      relations: ['location'],
+    });
   }
 
   async findManagersByLocation(locationId: number): Promise<ManagerLocation[]> {
