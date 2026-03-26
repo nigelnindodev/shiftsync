@@ -160,6 +160,8 @@ return await maybeUser.match({
 - Use custom error classes from `lib/errors.ts`
 - Handle 401 Unauthorized with redirect to login
 - Never use `alert()` — use `sonner` toasts
+- **Distinguish auth errors from network errors**: `UnauthorizedError` → redirect silently, other errors → show error UI with retry button (e.g., in layout)
+- **Never mask errors with empty defaults**: destructure `error`/`isError`/`refetch` from TanStack Query hooks; show error state with retry instead of falling back to `data = []` when a fetch fails
 
 ### React Patterns
 
@@ -168,6 +170,30 @@ return await maybeUser.match({
 - Name client component files with `.client.tsx` suffix
 - Extract logic into custom hooks with `use` prefix
 - Use `clsx` + `tailwind-merge` via `cn()` utility for conditional classes
+
+### TanStack Query Patterns
+
+- **Mutation pending states**: use per-row `useState` (e.g., `pendingId`) not global `mutation.isPending` which disables all rows
+- **Cache invalidation**: invalidate both per-slot keys (e.g., `['assignments', shiftId, slotId]`) and aggregate keys (e.g., `['assignments', 'all', shiftId]`)
+- **Query generics**: use union types matching runtime behavior (e.g., `useQuery<User | null>` when null is written to cache on 401)
+
+### Timezone Dates
+
+- Never use `toISOString().split('T')[0]` for local dates — this converts to UTC and shifts the date for non-UTC timezones
+- Use a helper function:
+
+```typescript
+function formatDateYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+```
+
+### Route Matching
+
+- Use prefix matching for nested routes: `pathname.startsWith(href + '/')`
 
 ```typescript
 // Good - using cn() for class merging
@@ -204,7 +230,14 @@ return await maybeUser.match({
 - Constraint checks are a **gate, not state** — nothing persisted on failure
 - BullMQ jobs must be **idempotent**
 
+### TypeORM Entity Decorators
+
+- For TSC-compiled code (production), use `*.entity.js` pattern in DataSource config:
+  - `entities: [__dirname + '/../**/*.entity.js']`
+- For SWC-built apps, entities load automatically via TypeORM's auto-load
+
 ### TypeORM Entity Rules
+
 - Always use arrow function syntax for relation decorators — never string references:
   - CORRECT: `@ManyToOne(() => ShiftSkill, (shiftSkill) => shiftSkill.assignments)`
   - WRONG: `@ManyToOne('ShiftSkill', 'assignments')`
@@ -265,3 +298,35 @@ return await maybeUser.match({
 - Use `class-variance-authority` for visual variants
 - Keep components small and single-responsibility
 - Follow ShadCN component patterns in `components/ui/`
+
+### Client Types
+
+- All types mirror server DTOs exactly in `client/types/scheduling.ts` and `client/types/user.ts`
+- Never widen union types — use strict unions (e.g., `AssignmentState`) not `string`
+- Profile query type includes `null`: `useQuery<ExternalEmployeeDetailsDto | null>` to match runtime null cache writes
+
+---
+
+## Docker
+
+### Postgres Healthcheck
+
+Add healthcheck in `docker-compose.yml` to ensure database is ready before server starts:
+
+```yaml
+postgres:
+  healthcheck:
+    test: ['CMD-SHELL', 'pg_isready -U user -d dbname']
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
+server:
+  depends_on:
+    postgres:
+      condition: service_healthy
+```
+
+### Seed on Startup
+
+The server runs seed on every startup via `DatabaseSeedService` implementing `OnApplicationBootstrap`. The service injects the app's `DataSource` (not a separate connection) and uses `require.main === module` guard in the seed script to allow both CLI execution and NestJS import.
