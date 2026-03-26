@@ -109,6 +109,14 @@ export const apiClient = {
     return handleResponse(response);
   },
 
+  async getManagerLocations(): Promise<LocationResponseDto[]> {
+    const response = await fetch(`${serverUrl}/manager/locations`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return handleResponse(response);
+  },
+
   async getSkills(): Promise<SkillResponseDto[]> {
     const response = await fetch(`${serverUrl}/skills`, {
       credentials: 'include',

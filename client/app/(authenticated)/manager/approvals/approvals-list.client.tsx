@@ -12,21 +12,34 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Check, X, Loader2 } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { usePendingApprovals } from '@/hooks/use-approvals';
 import { useApproveSwapDrop } from '@/hooks/use-assignments';
+import { useManagerLocations } from '@/hooks/use-reference-data';
 
 export default function ApprovalsView() {
   useProfile(); // intentionally invoked for auth side-effects
-  const locationId = 1; // Manager's assigned location (Downtown in seed data)
+
+  const { data: locations = [], isLoading: isLoadingLocations } =
+    useManagerLocations();
+  const [locationId, setLocationId] = useState<number | null>(null);
+
+  const selectedLocationId = locationId ?? locations[0]?.id ?? 0;
 
   const {
     data: approvals = [],
     isLoading,
     error,
     refetch,
-  } = usePendingApprovals(locationId);
+  } = usePendingApprovals(selectedLocationId);
   const approveMutation = useApproveSwapDrop();
   const [pendingId, setPendingId] = useState<number | null>(null);
 
@@ -45,10 +58,30 @@ export default function ApprovalsView() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-1">Pending Approvals</h1>
-      <p className="text-muted-foreground mb-8">
-        Swap and drop requests awaiting your approval
-      </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold mb-1">Pending Approvals</h1>
+          <p className="text-muted-foreground">
+            Swap and drop requests awaiting your approval
+          </p>
+        </div>
+        <Select
+          value={String(selectedLocationId)}
+          onValueChange={(val) => setLocationId(Number(val))}
+          disabled={isLoadingLocations || locations.length === 0}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select location" />
+          </SelectTrigger>
+          <SelectContent>
+            {locations.map((loc) => (
+              <SelectItem key={loc.id} value={String(loc.id)}>
+                {loc.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {isLoading ? (
         <div className="py-12 flex justify-center">

@@ -17,6 +17,9 @@ import {
   StaffAvailabilityRepository,
   ManagerLocationRepository,
 } from './repositories';
+import { ManagerController } from './http/manager.controller';
+import { SecurityModule } from '../security/security.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -29,7 +32,10 @@ import {
       StaffAvailabilityException,
       ManagerLocation,
     ]),
+    SecurityModule,
+    UsersModule,
   ],
+  controllers: [ManagerController],
   providers: [
     LocationRepository,
     SkillRepository,
