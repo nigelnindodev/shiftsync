@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockStaffSchedule, mockTestingEmployees } from '@/lib/mock-data';
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,8 +26,11 @@ import {
   MapPin,
   Shuffle,
   Trash2,
+  Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useMySchedule } from '@/hooks/use-my-schedule';
+import { useRequestSwap, useRequestDrop } from '@/hooks/use-staff-actions';
+import { useTestingEmployees } from '@/hooks/use-testing';
 
 function formatTime(iso: string, timezone: string) {
   return new Date(iso).toLocaleTimeString('en-US', {
@@ -80,52 +82,55 @@ function getStateBadge(state: string) {
     DROP_PENDING_APPROVAL: { variant: 'outline', label: 'Drop Pending' },
     CANCELLED: { variant: 'destructive', label: 'Cancelled' },
   };
-  const info = map[state] || { variant: 'outline' as const, label: state };
+  const info = map[state] || {
+    variant: 'outline' as const,
+    label: state.replace(/_/g, ' '),
+  };
   return <Badge variant={info.variant}>{info.label}</Badge>;
 }
 
 export default function StaffScheduleView() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(
+  const [activeAssignmentId, setActiveAssignmentId] = useState<number | null>(
     null,
   );
-  const [swapTarget, setSwapTarget] = useState('');
-  const [schedule, setSchedule] = useState(mockStaffSchedule);
+  const [swapTargetId, setSwapTargetId] = useState('');
 
-  const staffList = mockTestingEmployees.filter((e) => e.role === 'STAFF');
+  const { start, end } = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
+  const startDateStr = start.toISOString().split('T')[0];
+  const endDateStr = end.toISOString().split('T')[0];
 
-  const filteredSchedule = useMemo(() => {
-    const { start, end } = getWeekRange(weekOffset);
-    return schedule.filter((shift) => {
-      const shiftDate = getDateInTimezone(
-        shift.startTime,
-        shift.locationTimezone,
-      );
-      return shiftDate >= start && shiftDate < end;
-    });
-  }, [schedule, weekOffset]);
+  const { data: schedule = [], isLoading } = useMySchedule(
+    startDateStr,
+    endDateStr,
+  );
+  const { data: employees = [] } = useTestingEmployees();
+  const staffList = employees.filter((e) => e.role === 'STAFF');
+
+  const swapMutation = useRequestSwap();
+  const dropMutation = useRequestDrop();
 
   const handleRequestSwap = () => {
-    if (!activeAssignmentId) return;
-    setSchedule((prev) =>
-      prev.map((s) =>
-        String(s.assignmentId) === activeAssignmentId
-          ? { ...s, state: 'SWAP_REQUESTED' }
-          : s,
-      ),
+    if (!activeAssignmentId || !swapTargetId) return;
+    const targetEmployee = employees.find((e) => e.email === swapTargetId);
+    if (!targetEmployee) return;
+
+    swapMutation.mutate(
+      {
+        assignmentId: activeAssignmentId,
+        data: { targetStaffMemberId: targetEmployee.id },
+      },
+      {
+        onSuccess: () => {
+          setActiveAssignmentId(null);
+          setSwapTargetId('');
+        },
+      },
     );
-    toast.success('Swap request submitted');
-    setActiveAssignmentId(null);
-    setSwapTarget('');
   };
 
   const handleRequestDrop = (assignmentId: number) => {
-    setSchedule((prev) =>
-      prev.map((s) =>
-        s.assignmentId === assignmentId ? { ...s, state: 'DROP_REQUESTED' } : s,
-      ),
-    );
-    toast.success('Drop request submitted');
+    dropMutation.mutate(assignmentId);
   };
 
   const { start: weekStart } = getWeekRange(weekOffset);
@@ -165,13 +170,12 @@ export default function StaffScheduleView() {
         </div>
       </div>
 
-      {/* Single shared dialog outside the map */}
       <Dialog
         open={!!activeAssignmentId}
         onOpenChange={(open) => {
           if (!open) {
             setActiveAssignmentId(null);
-            setSwapTarget('');
+            setSwapTargetId('');
           }
         }}
       >
@@ -182,7 +186,7 @@ export default function StaffScheduleView() {
               Select a staff member to swap this shift with
             </DialogDescription>
           </DialogHeader>
-          <Select value={swapTarget} onValueChange={setSwapTarget}>
+          <Select value={swapTargetId} onValueChange={setSwapTargetId}>
             <SelectTrigger>
               <SelectValue placeholder="Select a staff member..." />
             </SelectTrigger>
@@ -199,20 +203,31 @@ export default function StaffScheduleView() {
               variant="outline"
               onClick={() => {
                 setActiveAssignmentId(null);
-                setSwapTarget('');
+                setSwapTargetId('');
               }}
             >
               Cancel
             </Button>
-            <Button onClick={handleRequestSwap} disabled={!swapTarget}>
-              Submit Request
+            <Button
+              onClick={handleRequestSwap}
+              disabled={!swapTargetId || swapMutation.isPending}
+            >
+              {swapMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Submit Request'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <div className="space-y-3">
-        {filteredSchedule.length === 0 && (
+        {isLoading ? (
+          <div className="py-12 flex justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : schedule.length === 0 ? (
           <Card className="card-shadow">
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">
@@ -220,79 +235,84 @@ export default function StaffScheduleView() {
               </p>
             </CardContent>
           </Card>
-        )}
-
-        {filteredSchedule.map((shift) => (
-          <Card key={shift.assignmentId} className="card-shadow">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="w-16 text-center">
-                <p className="text-xs text-muted-foreground">
-                  {
-                    formatDate(shift.startTime, shift.locationTimezone).split(
-                      ' ',
-                    )[0]
-                  }
-                </p>
-                <p className="text-lg font-bold">
-                  {new Date(
-                    new Date(shift.startTime).toLocaleDateString('en-US', {
-                      timeZone: shift.locationTimezone,
-                    }),
-                  ).getDate()}
-                </p>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    {formatTime(shift.startTime, shift.locationTimezone)}{' '}
-                    &ndash; {formatTime(shift.endTime, shift.locationTimezone)}
-                  </span>
+        ) : (
+          schedule.map((shift) => (
+            <Card key={shift.assignmentId} className="card-shadow">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-16 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    {
+                      formatDate(shift.startTime, shift.locationTimezone).split(
+                        ' ',
+                      )[0]
+                    }
+                  </p>
+                  <p className="text-lg font-bold">
+                    {getDateInTimezone(
+                      shift.startTime,
+                      shift.locationTimezone,
+                    ).getDate()}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {shift.locationName}
-                  </span>
-                  <span className="text-muted-foreground/40">&middot;</span>
-                  <span className="text-sm text-muted-foreground capitalize">
-                    {shift.skillName}
-                  </span>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                {getStateBadge(shift.state)}
-
-                {shift.state === 'ASSIGNED' && (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => {
-                        setActiveAssignmentId(String(shift.assignmentId));
-                      }}
-                    >
-                      <Shuffle className="w-3.5 h-3.5" />
-                      Swap
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => handleRequestDrop(shift.assignmentId)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Drop
-                    </Button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-sm font-medium">
+                      {formatTime(shift.startTime, shift.locationTimezone)}{' '}
+                      &ndash;{' '}
+                      {formatTime(shift.endTime, shift.locationTimezone)}
+                    </span>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {shift.locationName}
+                    </span>
+                    <span className="text-muted-foreground/40">&middot;</span>
+                    <span className="text-sm text-muted-foreground capitalize">
+                      {shift.skillName}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {getStateBadge(shift.state)}
+
+                  {shift.state === 'ASSIGNED' && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setActiveAssignmentId(shift.assignmentId);
+                        }}
+                      >
+                        <Shuffle className="w-3.5 h-3.5" />
+                        Swap
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={dropMutation.isPending}
+                        onClick={() => handleRequestDrop(shift.assignmentId)}
+                      >
+                        {dropMutation.isPending ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                        Drop
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

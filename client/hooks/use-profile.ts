@@ -1,6 +1,9 @@
 import { apiClient } from '@/lib/api-client';
 import { UnauthorizedError } from '@/lib/errors';
-import { UpdateProfileDto, User } from '@/types/user';
+import type {
+  ExternalEmployeeDetailsDto,
+  UpdateEmployeeDto,
+} from '@/types/user';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -14,7 +17,7 @@ export function useProfile() {
     isLoading,
     error,
     refetch,
-  } = useQuery<User, Error>({
+  } = useQuery<ExternalEmployeeDetailsDto | null, Error>({
     queryKey: ['profile'],
     queryFn: () => apiClient.getProfile(),
     retry: false,
@@ -23,22 +26,29 @@ export function useProfile() {
 
   useEffect(() => {
     if (error instanceof UnauthorizedError) {
-      queryClient.setQueryData(['profile'], null);
+      queryClient.setQueryData<ExternalEmployeeDetailsDto | null>(
+        ['profile'],
+        null,
+      );
       router.push('/');
     }
   }, [error, router, queryClient]);
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: UpdateProfileDto) => apiClient.updateProfile(data),
+    mutationFn: (data: UpdateEmployeeDto) => apiClient.updateProfile(data),
     onSuccess: (updatedUser) => {
-      queryClient.setQueryData(['profile'], updatedUser);
+      queryClient.setQueryData<ExternalEmployeeDetailsDto | null>(
+        ['profile'],
+        updatedUser,
+      );
     },
     onError: (e) => {
       if (e instanceof UnauthorizedError) {
-        queryClient.setQueryData(['profile'], null);
+        queryClient.setQueryData<ExternalEmployeeDetailsDto | null>(
+          ['profile'],
+          null,
+        );
         router.push('/');
-      } else {
-        // probably show toast here
       }
     },
   });

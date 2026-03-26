@@ -1,18 +1,23 @@
-import { GamingPlatform } from './platforms';
+import type { EmployeeRole } from './scheduling';
 
-export interface User {
+export interface EmployeeProfile {
+  id: number;
+  externalId: string;
+  role: EmployeeRole;
+  homeTimezone?: string;
+  desiredHoursPerWeek?: number;
+  desiredHoursNote?: string;
+}
+
+export interface ExternalEmployeeDetailsDto {
   externalId: string;
   email: string;
   name: string;
-  profile: {
-    bio?: string;
-    avatarUrl?: string;
-    platforms?: GamingPlatform[];
-  };
+  employee?: EmployeeProfile | null;
 }
 
-export interface UpdateProfileDto {
-  bio?: string;
-  avatarUrl?: string;
-  platforms?: GamingPlatform[];
+export interface UpdateEmployeeDto {
+  homeTimezone?: string;
+  desiredHoursPerWeek?: number;
+  desiredHoursNote?: string;
 }

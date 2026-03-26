@@ -10,6 +10,7 @@ import { UsersRepository } from './users.repository';
 import { EmployeeRepository } from './employee.repository';
 import { Employee } from './entity/employee.entity';
 import { SecurityModule } from 'src/security/security.module';
+import { RolesGuard } from 'src/security/guards/roles.guard';
 
 @Module({
   imports: [
@@ -17,11 +18,12 @@ import { SecurityModule } from 'src/security/security.module';
     SecurityModule,
     UsersClientModule,
   ],
-  providers: [UsersService, UsersRepository, EmployeeRepository],
+  providers: [UsersService, UsersRepository, EmployeeRepository, RolesGuard],
   controllers: [
     UsersController,
     UsersMicroserviceController,
     TestingController,
   ],
+  exports: [UsersService, EmployeeRepository, RolesGuard],
 })
 export class UsersModule {}

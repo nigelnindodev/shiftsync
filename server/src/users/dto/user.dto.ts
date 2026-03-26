@@ -104,6 +104,9 @@ export class UpdateUserDto extends UpdateEmployeeDto {
 
 export class EmployeeDto {
   @Expose()
+  id: number;
+
+  @Expose()
   externalId: string;
 
   @Expose()

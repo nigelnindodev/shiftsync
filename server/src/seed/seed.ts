@@ -20,22 +20,28 @@ import { User } from '../users/entity/user.entity';
 import { Employee } from '../users/entity/employee.entity';
 import { EmployeeRole } from '../users/user.types';
 
-async function seed() {
-  console.log('Connecting to database...');
-  const dataSource = new DataSource({
-    type: 'postgres',
-    host: process.env.PG_HOST ?? '0.0.0.0',
-    port: parseInt(process.env.PG_PORT ?? '5432', 10),
-    username: process.env.PG_USERNAME ?? 'changeuser',
-    password: process.env.PG_PASSWORD ?? 'changepass',
-    database: process.env.PG_DATABASE ?? 'change_dbname_shiftsync',
-    entities: [__dirname + '/../**/*.entity.ts'],
-    synchronize: true,
-    logging: true,
-  });
+export async function runSeed(externalDs?: DataSource): Promise<void> {
+  const ownConnection = !externalDs;
+  let dataSource: DataSource;
+  if (externalDs) {
+    dataSource = externalDs;
+  } else {
+    console.log('Connecting to database...');
+    dataSource = new DataSource({
+      type: 'postgres',
+      host: process.env.PG_HOST ?? '0.0.0.0',
+      port: parseInt(process.env.PG_PORT ?? '5432', 10),
+      username: process.env.PG_USERNAME ?? 'changeuser',
+      password: process.env.PG_PASSWORD ?? 'changepass',
+      database: process.env.PG_DATABASE ?? 'change_dbname_shiftsync',
+      entities: [__dirname + '/../**/*.entity.ts'],
+      synchronize: true,
+      logging: true,
+    });
+    await dataSource.initialize();
+  }
 
-  await dataSource.initialize();
-  console.log('Connected. Running seed...');
+  console.log('Running seed...');
 
   const locationRepo = dataSource.getRepository(Location);
   const skillRepo = dataSource.getRepository(Skill);
@@ -771,10 +777,16 @@ async function seed() {
   }
 
   console.log('Seed complete!');
-  await dataSource.destroy();
+  if (ownConnection) {
+    await dataSource.destroy();
+  }
 }
 
-seed().catch((e) => {
-  console.error('Seed failed:', e);
-  process.exit(1);
-});
+// Only run standalone when executed directly (e.g. `npm run seed`)
+// Skip when imported by NestJS (DatabaseSeedService calls runSeed with app DataSource)
+if (require.main === module) {
+  runSeed().catch((e) => {
+    console.error('Seed failed:', e);
+    process.exit(1);
+  });
+}

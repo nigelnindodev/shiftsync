@@ -2,22 +2,27 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     restart: always
     environment:
       POSTGRES_USER: changeuser
       POSTGRES_PASSWORD: changepass
-      POSTGRES_DB: change_dbname
+      POSTGRES_DB: change_dbname_shiftsync
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U changeuser -d change_dbname_shiftsync']
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:alpine
     restart: always
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
   server:
     build:
@@ -25,10 +30,12 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "5000:5000"
+      - '5000:5000'
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       NODE_ENV: development
       # Database
@@ -36,7 +43,7 @@ services:
       PG_PORT: 5432
       PG_USERNAME: changeuser
       PG_PASSWORD: changepass
-      PG_DATABASE: change_dbname
+      PG_DATABASE: change_dbname_shiftsync
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -48,6 +55,8 @@ services:
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
       # Encryption Keys (Required JSON format)
       ENCRYPTION_KEYS: ${ENCRYPTION_KEYS}
+      # Enable testing endpoints
+      ENABLE_TESTING_ENDPOINTS: ${ENABLE_TESTING_ENDPOINTS}
       # Client URL
       CLIENT_BASE_URL: http://localhost:3000
       SERVER_BASE_URL: http://localhost:5000
@@ -60,7 +69,7 @@ services:
         NEXT_PUBLIC_SERVER_BASE_URL: http://localhost:5000
     restart: always
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       - server
     environment:

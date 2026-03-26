@@ -17,7 +17,7 @@ export class AppConfigService extends ConfigService {
       port: this.get<number>('PG_PORT', 5432),
       username: this.get<string>('PG_USERNAME', 'changeuser'),
       password: this.get<string>('PG_PASSWORD', 'changepass'),
-      database: this.get<string>('PG_DATABASE', 'change_dbname'),
+      database: this.get<string>('PG_DATABASE', 'change_dbname_shiftsync'),
     };
   }
 
@@ -44,16 +44,19 @@ export class AppConfigService extends ConfigService {
     };
   }
 
-  // Server should not start if missing
+  /**
+   * We have invalid config for now, okay since we don't use for this project.
+   * TODO: Consider full purge
+   */
   get googleOAuthConfiguration(): { clientId: string; clientSecret: string } {
-    const clientId = this.get<string>('GOOGLE_OAUTH_CLIENT_ID');
-    const clientSecret = this.get<string>('GOOGLE_OAUTH_CLIENT_SECRET');
+    let clientId = this.get<string>('GOOGLE_OAUTH_CLIENT_ID');
+    let clientSecret = this.get<string>('GOOGLE_OAUTH_CLIENT_SECRET');
 
     if (!clientId) {
-      throw new Error('GOOGLE_OAUTH_CLIENT_ID is not set');
+      clientId = 'GOOGLE_OAUTH_CLIENT_ID_UNUSED_FOR_PROJECT';
     }
     if (!clientSecret) {
-      throw new Error('GOOGLE_OAUTH_CLIENT_SECRET is not set');
+      clientSecret = 'GOOGLE_OAUTH_CLIENT_SECRET_UNUSED_FOR_PROJECT';
     }
     return {
       clientId,

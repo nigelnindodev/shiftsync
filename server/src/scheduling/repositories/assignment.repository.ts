@@ -350,6 +350,7 @@ export class AssignmentRepository {
       staffName: string;
       state: string;
       shiftId: number;
+      slotId: number;
       startTime: Date;
       endTime: Date;
       locationId: number;
@@ -366,6 +367,7 @@ export class AssignmentRepository {
         eu.name AS "staffName",
         a.state,
         s.id AS "shiftId",
+        ss.id AS "slotId",
         s.start_time AS "startTime",
         s.end_time AS "endTime",
         l.id AS "locationId",
@@ -400,6 +402,7 @@ export class AssignmentRepository {
       staffName: r.staffName as string,
       state: r.state as string,
       shiftId: r.shiftId as number,
+      slotId: r.slotId as number,
       startTime: r.startTime as Date,
       endTime: r.endTime as Date,
       locationId: r.locationId as number,

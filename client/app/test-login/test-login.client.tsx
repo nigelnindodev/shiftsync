@@ -17,19 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockTestingEmployees } from '@/lib/mock-data';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTestingEmployees, useTestingLogin } from '@/hooks/use-testing';
+import type { EmployeeRole } from '@/types/scheduling';
 
-type Role = 'ADMIN' | 'MANAGER' | 'STAFF';
-
-const roleLabels: Record<Role, string> = {
+const roleLabels: Record<EmployeeRole, string> = {
   ADMIN: 'Admin',
   MANAGER: 'Manager',
   STAFF: 'Staff',
 };
 
-const roleRoutes: Record<Role, string> = {
+const roleRoutes: Record<EmployeeRole, string> = {
   ADMIN: '/admin',
   MANAGER: '/manager/shifts',
   STAFF: '/staff/schedule',
@@ -37,23 +36,27 @@ const roleRoutes: Record<Role, string> = {
 
 export default function TestLoginPage() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<Role | ''>('');
-  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedRole, setSelectedRole] = useState<EmployeeRole | ''>('');
+  const [selectedEmployeeEmail, setSelectedEmployeeEmail] = useState('');
+
+  const { data: employees = [], isLoading: isLoadingEmployees } =
+    useTestingEmployees();
+  const loginMutation = useTestingLogin();
 
   const filteredEmployees = selectedRole
-    ? mockTestingEmployees.filter((e) => e.role === selectedRole)
+    ? employees.filter((e) => e.role === selectedRole)
     : [];
 
   const handleLogin = () => {
-    const employee = mockTestingEmployees.find(
-      (e) => e.email === selectedEmployee,
-    );
+    const employee = employees.find((e) => e.email === selectedEmployeeEmail);
     if (!employee) return;
 
-    localStorage.setItem('shiftsync-role', employee.role);
-    localStorage.setItem('shiftsync-name', employee.name);
-    toast.success(`Logged in as ${employee.name}`);
-    router.push(roleRoutes[employee.role as Role]);
+    loginMutation.mutate(employee.email, {
+      onSuccess: () => {
+        toast.success(`Logged in as ${employee.name}`);
+        router.push(roleRoutes[employee.role as EmployeeRole]);
+      },
+    });
   };
 
   return (
@@ -65,7 +68,7 @@ export default function TestLoginPage() {
           </div>
           <CardTitle className="text-2xl font-bold">ShiftSync</CardTitle>
           <CardDescription>
-            Select a role and employee to log in
+            Select a role and employee to log in (Testing Only)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -74,15 +77,20 @@ export default function TestLoginPage() {
             <Select
               value={selectedRole}
               onValueChange={(val) => {
-                setSelectedRole(val as Role);
-                setSelectedEmployee('');
+                setSelectedRole(val as EmployeeRole);
+                setSelectedEmployeeEmail('');
               }}
+              disabled={isLoadingEmployees}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a role..." />
+                <SelectValue
+                  placeholder={
+                    isLoadingEmployees ? 'Loading...' : 'Select a role...'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(roleLabels) as Role[]).map((role) => (
+                {(Object.keys(roleLabels) as EmployeeRole[]).map((role) => (
                   <SelectItem key={role} value={role}>
                     {roleLabels[role]}
                   </SelectItem>
@@ -94,16 +102,18 @@ export default function TestLoginPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Employee</label>
             <Select
-              value={selectedEmployee}
-              onValueChange={setSelectedEmployee}
-              disabled={!selectedRole}
+              value={selectedEmployeeEmail}
+              onValueChange={setSelectedEmployeeEmail}
+              disabled={!selectedRole || isLoadingEmployees}
             >
               <SelectTrigger className="w-full">
                 <SelectValue
                   placeholder={
-                    selectedRole
-                      ? 'Select an employee...'
-                      : 'Select a role first'
+                    !selectedRole
+                      ? 'Select a role first'
+                      : isLoadingEmployees
+                        ? 'Loading...'
+                        : 'Select an employee...'
                   }
                 />
               </SelectTrigger>
@@ -120,9 +130,16 @@ export default function TestLoginPage() {
           <Button
             className="w-full"
             onClick={handleLogin}
-            disabled={!selectedEmployee}
+            disabled={!selectedEmployeeEmail || loginMutation.isPending}
           >
-            Log In
+            {loginMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              'Log In'
+            )}
           </Button>
         </CardContent>
       </Card>
