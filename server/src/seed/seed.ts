@@ -275,7 +275,7 @@ export async function runSeed(
   // -------------------------------------------------------------------------
   // Locations  (index 0=Downtown ET, 1=Midtown ET, 2=Pier PT, 3=Harbor PT)
   // -------------------------------------------------------------------------
-  const L = await Promise.all([
+  const locations = await Promise.all([
     upsertLocation(locationRepo, {
       name: 'Downtown',
       timezone: 'America/New_York',
@@ -301,7 +301,7 @@ export async function runSeed(
   // -------------------------------------------------------------------------
   // Skills  (index 0=bartender, 1=line cook, 2=server, 3=host)
   // -------------------------------------------------------------------------
-  const S = await Promise.all([
+  const skills = await Promise.all([
     upsertSkill(skillRepo, 'bartender'),
     upsertSkill(skillRepo, 'line cook'),
     upsertSkill(skillRepo, 'server'),
@@ -338,13 +338,13 @@ export async function runSeed(
   //   Chris     → Harbor only
   //   Casey     → Downtown + Harbor         (coast-to-coast manager)
   // -------------------------------------------------------------------------
-  type ManagerDef = {
+  type ManagerDefinition = {
     email: string;
     name: string;
     tz: string;
     locationIdxs: number[];
   };
-  const managerDefs: ManagerDef[] = [
+  const managerDefinitions: ManagerDefinition[] = [
     {
       email: 'manager.sam@coastaleats.com',
       name: 'Sam Chen',
@@ -396,18 +396,18 @@ export async function runSeed(
   ];
 
   const savedManagers: Employee[] = [];
-  for (const m of managerDefs) {
+  for (const managerDefinition of managerDefinitions) {
     const emp = await upsertEmployee(
       employeeRepo,
       userRepo,
-      m.email,
-      m.name,
+      managerDefinition.email,
+      managerDefinition.name,
       EmployeeRole.MANAGER,
-      m.tz,
+      managerDefinition.tz,
     );
     savedManagers.push(emp);
-    for (const idx of m.locationIdxs) {
-      await linkManagerLocation(managerLocationRepo, emp.id, L[idx].id);
+    for (const idx of managerDefinition.locationIdxs) {
+      await linkManagerLocation(managerLocationRepo, emp.id, locations[idx].id);
     }
   }
 
@@ -705,10 +705,10 @@ export async function runSeed(
     savedStaff.push({ employee: emp, def });
 
     for (const idx of def.locationIdxs) {
-      await linkCertification(locationCertRepo, emp.id, L[idx].id);
+      await linkCertification(locationCertRepo, emp.id, locations[idx].id);
     }
     for (const idx of def.skillIdxs) {
-      await linkSkill(staffSkillRepo, emp.id, S[idx].id);
+      await linkSkill(staffSkillRepo, emp.id, skills[idx].id);
     }
     for (const [day, [start, end]] of Object.entries(def.availability) as [
       DayOfWeek,
@@ -765,10 +765,10 @@ export async function runSeed(
     number,
     { current: Schedule; next: Schedule }
   > = {};
-  for (let locIdx = 0; locIdx < L.length; locIdx++) {
+  for (let locIdx = 0; locIdx < locations.length; locIdx++) {
     const currentWeekSchedule = await upsertSchedule(
       scheduleRepo,
-      L[locIdx].id,
+      locations[locIdx].id,
       currentWeekOf,
       ScheduleState.PUBLISHED,
       new Date(),
@@ -776,7 +776,7 @@ export async function runSeed(
     );
     const nextWeekSchedule = await upsertSchedule(
       scheduleRepo,
-      L[locIdx].id,
+      locations[locIdx].id,
       nextWeekOf,
       ScheduleState.BUILDING,
     );
@@ -816,7 +816,7 @@ export async function runSeed(
       await upsertShiftSkill(
         shiftSkillRepo,
         shift.id,
-        S[slot.skillIdx].id,
+        skills[slot.skillIdx].id,
         slot.headcount,
       );
     }
@@ -827,7 +827,7 @@ export async function runSeed(
   for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
     // Downtown — published current week, open next week
     await seedDayShift(
-      L[0],
+      locations[0],
       0,
       dayOffset,
       [
@@ -841,7 +841,7 @@ export async function runSeed(
 
     // Midtown
     await seedDayShift(
-      L[1],
+      locations[1],
       1,
       dayOffset,
       [
@@ -855,7 +855,7 @@ export async function runSeed(
 
     // Pier
     await seedDayShift(
-      L[2],
+      locations[2],
       2,
       dayOffset,
       [
@@ -869,7 +869,7 @@ export async function runSeed(
 
     // Harbor
     await seedDayShift(
-      L[3],
+      locations[3],
       3,
       dayOffset,
       [
@@ -898,14 +898,14 @@ export async function runSeed(
       for (const fridayOffset of [4, 5]) {
         // Fri=4, Sat=5 from Monday
         const base = weekStart.add({ days: weekOffset * 7 + fridayOffset });
-        const baseInLocTz = base.withTimeZone(L[locIdx].timezone);
+        const baseInLocTz = base.withTimeZone(locations[locIdx].timezone);
         const isCurrentWeek = weekOffset === 0;
         const scheduleId = isCurrentWeek
           ? schedulesByLocation[locIdx].current.id
           : schedulesByLocation[locIdx].next.id;
         const eveningShift = await upsertShift(
           shiftRepo,
-          L[locIdx].id,
+          locations[locIdx].id,
           toDate(baseInLocTz, 18),
           toDate(baseInLocTz, 23),
           isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
@@ -915,13 +915,13 @@ export async function runSeed(
         const barSlot = await upsertShiftSkill(
           shiftSkillRepo,
           eveningShift.id,
-          S[0].id,
+          skills[0].id,
           1,
         );
         const srvSlot = await upsertShiftSkill(
           shiftSkillRepo,
           eveningShift.id,
-          S[2].id,
+          skills[2].id,
           2,
         );
 
@@ -960,22 +960,23 @@ export async function runSeed(
   for (const { locIdx, staffId } of overnightConfigs) {
     for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
       const base = weekStart.add({ days: weekOffset * 7 + 4 }); // Friday night
+      const baseInLocalTimezone = base.withTimeZone(locations[locIdx].timezone);
       const isCurrentWeek = weekOffset === 0;
       const scheduleId = isCurrentWeek
         ? schedulesByLocation[locIdx].current.id
         : schedulesByLocation[locIdx].next.id;
       const overnightShift = await upsertShift(
         shiftRepo,
-        L[locIdx].id,
-        toDate(base, 23),
-        toDate(base.add({ days: 1 }), 3),
+        locations[locIdx].id,
+        toDate(baseInLocalTimezone, 23),
+        toDate(baseInLocalTimezone.add({ days: 1 }), 3),
         isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
         scheduleId,
       );
       const oSlot = await upsertShiftSkill(
         shiftSkillRepo,
         overnightShift.id,
-        S[0].id,
+        skills[0].id,
         1,
       );
       await upsertAssignment(
@@ -1015,7 +1016,7 @@ export async function runSeed(
   for (const inst of chaosInstances) {
     const chaosShift = await upsertShift(
       shiftRepo,
-      L[inst.locIdx].id,
+      locations[inst.locIdx].id,
       toDate(nextSunday, 19),
       toDate(nextSunday, 23),
       ShiftState.LOCKED,
@@ -1024,7 +1025,7 @@ export async function runSeed(
     const chaosSlot = await upsertShiftSkill(
       shiftSkillRepo,
       chaosShift.id,
-      S[inst.skillIdx].id,
+      skills[inst.skillIdx].id,
       1,
     );
     await upsertAssignment(
@@ -1047,7 +1048,7 @@ export async function runSeed(
     const base = weekStart.add({ days: d });
     const otShift = await upsertShift(
       shiftRepo,
-      L[0].id,
+      locations[0].id,
       toDate(base, 9),
       toDate(base, 16),
       ShiftState.LOCKED,
@@ -1056,7 +1057,7 @@ export async function runSeed(
     const otSlot = await upsertShiftSkill(
       shiftSkillRepo,
       otShift.id,
-      S[0].id,
+      skills[0].id,
       1,
     );
     await upsertAssignment(
@@ -1073,7 +1074,7 @@ export async function runSeed(
     const base = weekStart.add({ days: d });
     const otShift = await upsertShift(
       shiftRepo,
-      L[0].id,
+      locations[0].id,
       toDate(base, 10),
       toDate(base, 18),
       ShiftState.LOCKED,
@@ -1082,7 +1083,7 @@ export async function runSeed(
     const otSlot = await upsertShiftSkill(
       shiftSkillRepo,
       otShift.id,
-      S[0].id,
+      skills[0].id,
       1,
     );
     await upsertAssignment(
@@ -1099,7 +1100,7 @@ export async function runSeed(
     const base = weekStart.add({ days: d });
     const otShift = await upsertShift(
       shiftRepo,
-      L[1].id,
+      locations[1].id,
       toDate(base, 13),
       toDate(base, 19),
       ShiftState.LOCKED,
@@ -1108,7 +1109,7 @@ export async function runSeed(
     const otSlot = await upsertShiftSkill(
       shiftSkillRepo,
       otShift.id,
-      S[0].id,
+      skills[0].id,
       1,
     );
     await upsertAssignment(
@@ -1125,7 +1126,7 @@ export async function runSeed(
     const base = nextWeekStart.add({ days: d });
     const otShift = await upsertShift(
       shiftRepo,
-      L[0].id,
+      locations[0].id,
       toDate(base, 10),
       toDate(base, 18),
       ShiftState.OPEN,
@@ -1134,7 +1135,7 @@ export async function runSeed(
     const otSlot = await upsertShiftSkill(
       shiftSkillRepo,
       otShift.id,
-      S[2].id,
+      skills[2].id,
       1,
     );
     await upsertAssignment(
@@ -1158,34 +1159,34 @@ export async function runSeed(
   // Instance A: Pier shift 09:00–17:00 PT = 12:00–20:00 ET — outside her ET window
   for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
     const base = weekStart.add({ days: weekOffset * 7 + 1 }); // Tuesday
-    const baseInLocTz = base.withTimeZone(L[2].timezone); // Pier is PT
+    const baseInLocTz = base.withTimeZone(locations[2].timezone); // Pier is PT
     const isCurrentWeek = weekOffset === 0;
     const scheduleId = isCurrentWeek
       ? schedulesByLocation[2].current.id
       : schedulesByLocation[2].next.id;
     const tzShift = await upsertShift(
       shiftRepo,
-      L[2].id,
+      locations[2].id,
       toDate(baseInLocTz, 9),
       toDate(baseInLocTz, 17),
       isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
       scheduleId,
     );
-    await upsertShiftSkill(shiftSkillRepo, tzShift.id, S[2].id, 2);
+    await upsertShiftSkill(shiftSkillRepo, tzShift.id, skills[2].id, 2);
     // Assignment intentionally left unassigned — evaluator tests if system allows assigning Alexandra
   }
 
   // Instance B: Downtown shift 09:00–17:00 ET — clearly within her window
   for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
     const base = weekStart.add({ days: weekOffset * 7 + 2 }); // Wednesday
-    const baseInLocTz = base.withTimeZone(L[0].timezone); // Downtown is ET
+    const baseInLocTz = base.withTimeZone(locations[0].timezone); // Downtown is ET
     const isCurrentWeek = weekOffset === 0;
     const scheduleId = isCurrentWeek
       ? schedulesByLocation[0].current.id
       : schedulesByLocation[0].next.id;
     const tzShift = await upsertShift(
       shiftRepo,
-      L[0].id,
+      locations[0].id,
       toDate(baseInLocTz, 9),
       toDate(baseInLocTz, 17),
       isCurrentWeek ? ShiftState.LOCKED : ShiftState.OPEN,
@@ -1194,7 +1195,7 @@ export async function runSeed(
     const tzSlot = await upsertShiftSkill(
       shiftSkillRepo,
       tzShift.id,
-      S[2].id,
+      skills[2].id,
       1,
     );
     await upsertAssignment(
@@ -1222,24 +1223,24 @@ export async function runSeed(
       // Open bartender slot at Downtown (managed by Jordan/Sam/Casey)
       const dtShift = await upsertShift(
         shiftRepo,
-        L[0].id,
+        locations[0].id,
         toDate(base, 10),
         toDate(base, 18),
         ShiftState.OPEN,
         schedulesByLocation[0].next.id,
       );
-      await upsertShiftSkill(shiftSkillRepo, dtShift.id, S[0].id, 1);
+      await upsertShiftSkill(shiftSkillRepo, dtShift.id, skills[0].id, 1);
 
       // Open bartender slot at Midtown same time (managed by Jordan/Morgan/Riley)
       const mtShift = await upsertShift(
         shiftRepo,
-        L[1].id,
+        locations[1].id,
         toDate(base, 10),
         toDate(base, 18),
         ShiftState.OPEN,
         schedulesByLocation[1].next.id,
       );
-      await upsertShiftSkill(shiftSkillRepo, mtShift.id, S[0].id, 1);
+      await upsertShiftSkill(shiftSkillRepo, mtShift.id, skills[0].id, 1);
 
       // Marcus is certified at both — evaluator logs in as two managers and races
     }
@@ -1281,12 +1282,17 @@ export async function runSeed(
     const fDate = thisSaturday.subtract({ weeks: weeksAgo });
     const fShift = await upsertShift(
       shiftRepo,
-      L[0].id,
+      locations[0].id,
       toDate(fDate, 18),
       toDate(fDate, 22),
       ShiftState.COMPLETED,
     );
-    const fSlot = await upsertShiftSkill(shiftSkillRepo, fShift.id, S[2].id, 1);
+    const fSlot = await upsertShiftSkill(
+      shiftSkillRepo,
+      fShift.id,
+      skills[2].id,
+      1,
+    );
     await upsertAssignment(
       assignmentRepo,
       fSlot.id,
@@ -1300,12 +1306,17 @@ export async function runSeed(
     const fDate = thisSaturday.subtract({ weeks: weeksAgo });
     const fShift = await upsertShift(
       shiftRepo,
-      L[1].id,
+      locations[1].id,
       toDate(fDate, 18),
       toDate(fDate, 22),
       ShiftState.COMPLETED,
     );
-    const fSlot = await upsertShiftSkill(shiftSkillRepo, fShift.id, S[2].id, 1);
+    const fSlot = await upsertShiftSkill(
+      shiftSkillRepo,
+      fShift.id,
+      skills[2].id,
+      1,
+    );
     await upsertAssignment(
       assignmentRepo,
       fSlot.id,
@@ -1334,18 +1345,21 @@ export async function runSeed(
 
   for (const inst of regretInstances) {
     const base = nextWeekStart.add({ days: inst.dayOffset });
+    const baseInLocationTimezone = base.withTimeZone(
+      locations[inst.locIdx].timezone,
+    );
     const swapShift = await upsertShift(
       shiftRepo,
-      L[inst.locIdx].id,
-      toDate(base, 10),
-      toDate(base, 18),
+      locations[inst.locIdx].id,
+      toDate(baseInLocationTimezone, 10),
+      toDate(baseInLocationTimezone, 18),
       ShiftState.OPEN, // Not LOCKED — swap requests only allowed on non-locked shifts
       schedulesByLocation[inst.locIdx].next.id, // Next week's schedule (BUILDING)
     );
     const swapSlot = await upsertShiftSkill(
       shiftSkillRepo,
       swapShift.id,
-      S[inst.skillIdx].id,
+      skills[inst.skillIdx].id,
       1,
     );
     await upsertAssignment(
@@ -1379,7 +1393,7 @@ export async function runSeed(
     // Evening shift: 15:00–23:00
     const eveningShift = await upsertShift(
       shiftRepo,
-      L[inst.locIdx].id,
+      locations[inst.locIdx].id,
       toDate(base, 15),
       toDate(base, 23),
       ShiftState.OPEN,
@@ -1388,7 +1402,7 @@ export async function runSeed(
     const eveningSlot = await upsertShiftSkill(
       shiftSkillRepo,
       eveningShift.id,
-      S[inst.skillIdx].id,
+      skills[inst.skillIdx].id,
       1,
     );
     await upsertAssignment(
@@ -1403,7 +1417,7 @@ export async function runSeed(
     const nextDay = base.add({ days: 1 });
     const morningShift = await upsertShift(
       shiftRepo,
-      L[inst.locIdx].id,
+      locations[inst.locIdx].id,
       toDate(nextDay, 7),
       toDate(nextDay, 15),
       ShiftState.OPEN,
@@ -1412,7 +1426,7 @@ export async function runSeed(
     const morningSlot = await upsertShiftSkill(
       shiftSkillRepo,
       morningShift.id,
-      S[inst.skillIdx].id,
+      skills[inst.skillIdx].id,
       1,
     );
     await upsertAssignment(
@@ -1445,7 +1459,7 @@ export async function runSeed(
     const base = weekStart.add({ days: inst.dayOffset }); // dayOffset 7,8,9,10 = next week
     const dropShift = await upsertShift(
       shiftRepo,
-      L[inst.locIdx].id,
+      locations[inst.locIdx].id,
       toDate(base, 10),
       toDate(base, 18),
       ShiftState.OPEN, // Not LOCKED — drop requests only allowed on non-locked shifts
@@ -1454,7 +1468,7 @@ export async function runSeed(
     const dropSlot = await upsertShiftSkill(
       shiftSkillRepo,
       dropShift.id,
-      S[inst.skillIdx].id,
+      skills[inst.skillIdx].id,
       1,
     );
     await upsertAssignment(
