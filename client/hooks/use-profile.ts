@@ -17,7 +17,7 @@ export function useProfile() {
     isLoading,
     error,
     refetch,
-  } = useQuery<ExternalEmployeeDetailsDto, Error>({
+  } = useQuery<ExternalEmployeeDetailsDto | null, Error>({
     queryKey: ['profile'],
     queryFn: () => apiClient.getProfile(),
     retry: false,
@@ -26,7 +26,10 @@ export function useProfile() {
 
   useEffect(() => {
     if (error instanceof UnauthorizedError) {
-      queryClient.setQueryData(['profile'], null);
+      queryClient.setQueryData<ExternalEmployeeDetailsDto | null>(
+        ['profile'],
+        null,
+      );
       router.push('/');
     }
   }, [error, router, queryClient]);
@@ -34,11 +37,17 @@ export function useProfile() {
   const updateProfileMutation = useMutation({
     mutationFn: (data: UpdateEmployeeDto) => apiClient.updateProfile(data),
     onSuccess: (updatedUser) => {
-      queryClient.setQueryData(['profile'], updatedUser);
+      queryClient.setQueryData<ExternalEmployeeDetailsDto | null>(
+        ['profile'],
+        updatedUser,
+      );
     },
     onError: (e) => {
       if (e instanceof UnauthorizedError) {
-        queryClient.setQueryData(['profile'], null);
+        queryClient.setQueryData<ExternalEmployeeDetailsDto | null>(
+          ['profile'],
+          null,
+        );
         router.push('/');
       }
     },

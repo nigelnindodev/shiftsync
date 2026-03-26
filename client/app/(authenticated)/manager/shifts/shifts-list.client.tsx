@@ -119,22 +119,20 @@ interface SkillSlotInput {
 }
 
 export default function ShiftsList() {
-  useProfile();
+  useProfile(); // intentionally invoked for auth side-effects
+
   const { data: locations = [] } = useLocations();
   const { data: skills = [] } = useSkills();
 
-  // Use locationId 1 (Downtown) as default if not found
-  const activeLocationId = 1;
-  const activeLocation = locations.find((l) => l.id === activeLocationId) || {
-    name: 'Downtown',
-    timezone: 'America/New_York',
-  };
-  const TZ = activeLocation.timezone;
+  const activeLocationId = locations[0]?.id ?? 1;
+  const activeLocation = locations.find((l) => l.id === activeLocationId);
+  const TZ = activeLocation?.timezone ?? 'America/New_York';
 
   const [weekOffset, setWeekOffset] = useState(0);
   const now = new Date();
   const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay() + 1 + weekOffset * 7);
+  const mondayOffset = (now.getDay() + 6) % 7;
+  startOfWeek.setDate(now.getDate() - mondayOffset + weekOffset * 7);
   startOfWeek.setHours(0, 0, 0, 0);
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 7);
@@ -222,7 +220,7 @@ export default function ShiftsList() {
         <div>
           <h1 className="text-2xl font-bold">Shifts</h1>
           <p className="text-muted-foreground mt-1">
-            {activeLocation.name} — create and manage shifts
+            {activeLocation?.name ?? 'All Locations'} — create and manage shifts
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -264,7 +262,7 @@ export default function ShiftsList() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Location</Label>
-                  <Input value={activeLocation.name} disabled />
+                  <Input value={activeLocation?.name ?? ''} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label>Date</Label>

@@ -76,8 +76,6 @@ export default function SwapRequestsView() {
     claimDrop.mutate(assignmentId);
   };
 
-  const { start: weekStart } = getWeekRange(weekOffset);
-
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -98,7 +96,7 @@ export default function SwapRequestsView() {
           <span className="text-sm font-medium min-w-[160px] text-center">
             {weekOffset === 0
               ? 'This Week'
-              : weekStart.toLocaleDateString('en-US', {
+              : start.toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                 })}

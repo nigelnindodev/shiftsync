@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/drawer';
 import { NavLinks } from '@/components/nav-links.client';
 import { CalendarClock, LogOut, Menu, Loader2 } from 'lucide-react';
+import { UnauthorizedError } from '@/lib/errors';
 import { useProfile } from '@/hooks/use-profile';
 import { useTestingLogout } from '@/hooks/use-testing';
 import { usePathname, useRouter } from 'next/navigation';
@@ -38,7 +39,7 @@ export default function AuthenticatedLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { user, isLoading, isAuthenticated } = useProfile();
+  const { user, isLoading, isAuthenticated, error, refetch } = useProfile();
   const logoutMutation = useTestingLogout();
 
   // Redirect bare /authenticated to role-appropriate landing page
@@ -69,8 +70,23 @@ export default function AuthenticatedLayout({
     );
   }
 
-  if (!isAuthenticated || !user) {
-    return null; // useProfile handles redirect to / via useEffect
+  // Auth failures redirect via useProfile's useEffect
+  if (error instanceof UnauthorizedError) {
+    return null;
+  }
+
+  // Non-auth errors (network, 500): show retry UI
+  if (error && !user) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground">Failed to load profile</p>
+        <Button onClick={() => refetch()}>Retry</Button>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
   }
 
   const role = user.employee?.role || '';

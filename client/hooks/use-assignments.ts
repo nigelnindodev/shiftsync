@@ -43,6 +43,9 @@ export function useAssignStaff() {
         queryKey: ['assignments', shiftId, slotId],
       });
       queryClient.invalidateQueries({
+        queryKey: ['assignments', 'all', shiftId],
+      });
+      queryClient.invalidateQueries({
         queryKey: ['eligible-staff', shiftId, slotId],
       });
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
@@ -68,6 +71,9 @@ export function useRemoveAssignment() {
     onSuccess: (_, { shiftId, slotId }) => {
       queryClient.invalidateQueries({
         queryKey: ['assignments', shiftId, slotId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['assignments', 'all', shiftId],
       });
       queryClient.invalidateQueries({
         queryKey: ['eligible-staff', shiftId, slotId],
@@ -111,6 +117,12 @@ export function useApproveSwapDrop() {
     onSuccess: (_, { shiftId, slotId }) => {
       queryClient.invalidateQueries({
         queryKey: ['assignments', shiftId, slotId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['assignments', 'all', shiftId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['eligible-staff', shiftId, slotId],
       });
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['shifts'] });

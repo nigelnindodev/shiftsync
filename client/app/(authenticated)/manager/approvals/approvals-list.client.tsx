@@ -17,8 +17,8 @@ import { usePendingApprovals } from '@/hooks/use-approvals';
 import { useApproveSwapDrop } from '@/hooks/use-assignments';
 
 export default function ApprovalsView() {
-  const { user } = useProfile();
-  const locationId = user?.employee?.id ? 1 : 0;
+  useProfile(); // intentionally invoked for auth side-effects
+  const locationId = 1; // Manager's assigned location (Downtown in seed data)
 
   const { data: approvals = [], isLoading } = usePendingApprovals(locationId);
   const approveMutation = useApproveSwapDrop();

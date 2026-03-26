@@ -61,7 +61,12 @@ function getStateBadge(state: string): React.ReactElement {
 }
 
 export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
-  const { data: shift, isLoading: isLoadingShift } = useShift(shiftId);
+  const {
+    data: shift,
+    isLoading: isLoadingShift,
+    error: shiftError,
+    refetch: refetchShift,
+  } = useShift(shiftId);
   const slotIds = shift?.skills.map((s) => s.id) || [];
   const { data: slots = [], isLoading: isLoadingSlots } = useAllSlotAssignments(
     shiftId,
@@ -119,6 +124,17 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
     return (
       <div className="p-8 flex justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (shiftError) {
+    return (
+      <div className="p-8 flex flex-col items-center gap-4 py-20">
+        <p className="text-muted-foreground">Failed to load shift</p>
+        <Button variant="outline" onClick={() => refetchShift()}>
+          Retry
+        </Button>
       </div>
     );
   }
