@@ -20,7 +20,10 @@ import { User } from '../users/entity/user.entity';
 import { Employee } from '../users/entity/employee.entity';
 import { EmployeeRole } from '../users/user.types';
 
-export async function runSeed(externalDs?: DataSource): Promise<void> {
+export async function runSeed(
+  externalDs?: DataSource,
+  checkDataExists = false,
+): Promise<void> {
   const ownConnection = !externalDs;
   let dataSource: DataSource;
   if (externalDs) {
@@ -39,6 +42,19 @@ export async function runSeed(externalDs?: DataSource): Promise<void> {
       logging: true,
     });
     await dataSource.initialize();
+  }
+
+  if (checkDataExists) {
+    const adminCount: Array<{ count: string }> = await dataSource.query(
+      `SELECT COUNT(*) FROM employee WHERE role = 'ADMIN'`,
+    );
+    if (parseInt(adminCount[0].count, 10) > 0) {
+      console.log('Seed data already exists, skipping...');
+      if (ownConnection) {
+        await dataSource.destroy();
+      }
+      return;
+    }
   }
 
   console.log('Running seed...');
@@ -419,15 +435,22 @@ export async function runSeed(externalDs?: DataSource): Promise<void> {
   }
 
   // --- Sample Shifts (2 weeks ahead across all locations) ---
+  // Anchor dates to current week Monday to ensure seed always creates usable data
+  const locTimezone = savedLocations[0].timezone;
   const now = Temporal.Now.instant();
+  let weekStart = now.toZonedDateTimeISO(locTimezone);
+  while (weekStart.dayOfWeek !== 1) {
+    weekStart = weekStart.subtract({ days: 1 });
+  }
+  weekStart = weekStart.with({ hour: 0, minute: 0, second: 0, nanosecond: 0 });
 
   for (const location of savedLocations) {
     const locTimezone = location.timezone;
 
     for (let dayOffset = 1; dayOffset <= 14; dayOffset++) {
-      const baseDate = now
-        .toZonedDateTimeISO(locTimezone)
-        .add({ days: dayOffset });
+      const baseDate = weekStart
+        .add({ days: dayOffset })
+        .with({ timeZone: locTimezone });
 
       const shiftDate = new Date(
         baseDate
@@ -560,8 +583,8 @@ export async function runSeed(externalDs?: DataSource): Promise<void> {
   const downtownTimezone = downtown.timezone;
 
   // 1. The Sunday Night Chaos: Upcoming Sunday 7pm-11pm at Downtown, assigned to James Bartender
-  // Find next Sunday
-  let nextSunday = now.toZonedDateTimeISO(downtownTimezone);
+  // Find next Sunday from weekStart
+  let nextSunday = weekStart.with({ timeZone: downtownTimezone });
   while (nextSunday.dayOfWeek !== 7) {
     nextSunday = nextSunday.add({ days: 1 });
   }
@@ -629,11 +652,8 @@ export async function runSeed(externalDs?: DataSource): Promise<void> {
   }
 
   // 2. The Overtime Trap: John Bartender gets 5x 8h shifts (40 hours) this current week
-  // Walk back to Monday of this week
-  let thisMonday = now.toZonedDateTimeISO(downtownTimezone);
-  while (thisMonday.dayOfWeek !== 1) {
-    thisMonday = thisMonday.subtract({ days: 1 });
-  }
+  // Use weekStart which is already Monday of current week
+  const thisMonday = weekStart.with({ timeZone: downtownTimezone });
   for (let d = 0; d < 5; d++) {
     const otDate = thisMonday.add({ days: d });
     const otStart = new Date(
@@ -701,17 +721,15 @@ export async function runSeed(externalDs?: DataSource): Promise<void> {
   }
 
   // 3. The Fairness Complaint: 3 past Saturday shifts for Server. 2 to Sarah, 1 to Lisa, none to Emma.
-  let pastSaturday = now.toZonedDateTimeISO(downtownTimezone);
-  while (pastSaturday.dayOfWeek !== 6) {
-    pastSaturday = pastSaturday.subtract({ days: 1 });
-  }
+  // Use weekStart (Monday) + 5 days = this week's Saturday
+  const thisWeekSaturday = weekStart.add({ days: 5 });
   const fairnessStaff = [
     savedStaff[1].employee.id,
     savedStaff[1].employee.id,
     savedStaff[6].employee.id,
   ]; // Sarah, Sarah, Lisa
   for (let w = 1; w <= 3; w++) {
-    const fairnessDate = pastSaturday.subtract({ weeks: w });
+    const fairnessDate = thisWeekSaturday.subtract({ weeks: w });
     const fStart = new Date(
       fairnessDate
         .with({ hour: 18, minute: 0, second: 0, nanosecond: 0 })
