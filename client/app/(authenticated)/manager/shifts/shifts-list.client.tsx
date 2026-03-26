@@ -233,20 +233,20 @@ export default function ShiftsList() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">Shifts</h1>
           <p className="text-muted-foreground mt-1">
             {activeLocation?.name ?? 'All Locations'} — create and manage shifts
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <Select
             value={String(selectedLocationId)}
             onValueChange={(val) => setLocationId(Number(val))}
             disabled={isLoadingLocations || locations.length === 0}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
             <SelectContent>
@@ -257,7 +257,7 @@ export default function ShiftsList() {
               ))}
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-1 border rounded-lg px-1 py-1 bg-background shadow-sm mr-2">
+          <div className="flex items-center gap-1 border rounded-lg px-1 py-1 bg-background shadow-sm">
             <Button
               variant="ghost"
               size="sm"
@@ -368,9 +368,9 @@ export default function ShiftsList() {
                             prev.map((s) =>
                               s.id === slot.id
                                 ? {
-                                    ...s,
-                                    headcount: parseInt(e.target.value) || 1,
-                                  }
+                                  ...s,
+                                  headcount: parseInt(e.target.value) || 1,
+                                }
                                 : s,
                             ),
                           );

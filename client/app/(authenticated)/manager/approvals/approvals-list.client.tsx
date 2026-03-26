@@ -58,8 +58,8 @@ export default function ApprovalsView() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold mb-1">Pending Approvals</h1>
           <p className="text-muted-foreground">
             Swap and drop requests awaiting your approval
@@ -70,7 +70,7 @@ export default function ApprovalsView() {
           onValueChange={(val) => setLocationId(Number(val))}
           disabled={isLoadingLocations || locations.length === 0}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Select location" />
           </SelectTrigger>
           <SelectContent>
