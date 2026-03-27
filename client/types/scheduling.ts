@@ -189,3 +189,26 @@ export interface SkillResponseDto {
   id: number;
   name: string;
 }
+
+// ---------------------------------------------------------------------------
+// Manager — Staff
+// ---------------------------------------------------------------------------
+
+export interface StaffLocationDto {
+  id: number;
+  externalId: string;
+  name: string;
+  email: string;
+  homeTimezone: string;
+  desiredHoursPerWeek?: number;
+  desiredHoursNote?: string;
+}
+
+export interface CreateStaffDto {
+  email: string;
+  name: string;
+  homeTimezone: string;
+  desiredHoursPerWeek?: number;
+  desiredHoursNote?: string;
+  skillIds?: number[];
+}

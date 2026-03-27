@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Shuffle,
   Timer,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,11 @@ const managerLinks: NavLink[] = [
     href: '/manager/shifts',
     label: 'Shifts',
     icon: <CalendarDays className="w-4 h-4" />,
+  },
+  {
+    href: '/manager/staff',
+    label: 'Staff',
+    icon: <Users className="w-4 h-4" />,
   },
   {
     href: '/manager/approvals',

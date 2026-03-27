@@ -3,6 +3,7 @@ import type {
   AssignmentResponseDto,
   CreateAssignmentDto,
   CreateShiftDto,
+  CreateStaffDto,
   EligibleStaffDto,
   LocationResponseDto,
   PendingApprovalDto,
@@ -11,6 +12,7 @@ import type {
   SkillResponseDto,
   StaffAvailabilityExceptionResponseDto,
   StaffAvailabilityResponseDto,
+  StaffLocationDto,
   StaffScheduleEntryDto,
   TestingEmployeeDto,
   UpsertAvailabilityDto,
@@ -400,6 +402,37 @@ export const apiClient = {
       {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    return handleResponse(response);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Manager — Staff
+  // ---------------------------------------------------------------------------
+
+  async getStaffForLocation(locationId: number): Promise<StaffLocationDto[]> {
+    const response = await fetch(
+      `${serverUrl}/manager/locations/${locationId}/staff`,
+      {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    return handleResponse(response);
+  },
+
+  async createStaff(
+    locationId: number,
+    data: CreateStaffDto,
+  ): Promise<StaffLocationDto> {
+    const response = await fetch(
+      `${serverUrl}/manager/locations/${locationId}/staff`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       },
     );
     return handleResponse(response);

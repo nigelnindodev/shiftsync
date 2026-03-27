@@ -154,7 +154,7 @@ export default function AvailabilityManager() {
             <div>
               <CardTitle className="text-base">Recurring Windows</CardTitle>
               <CardDescription>
-                Your regular weekly availability
+                Your regular weekly availability. You can add multiple per day.
               </CardDescription>
             </div>
             <Dialog open={addWindowOpen} onOpenChange={setAddWindowOpen}>
