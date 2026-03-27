@@ -4,14 +4,14 @@ import { apiClient } from '@/lib/api-client';
 import type {
   ApproveSwapDropDto,
   CreateAssignmentDto,
+  AssignmentResponseDto,
   EligibleStaffDto,
-  SlotAssignmentsResponseDto,
 } from '@/types/scheduling';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export function useAssignments(shiftId: number, slotId: number) {
-  return useQuery<SlotAssignmentsResponseDto, Error>({
+  return useQuery<AssignmentResponseDto[], Error>({
     queryKey: ['assignments', shiftId, slotId],
     queryFn: () => apiClient.getAssignments(shiftId, slotId),
     enabled: shiftId > 0 && slotId > 0,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Trash2, X, Loader2 } from 'lucide-react';
+import { Eye, Plus, Trash2, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -368,9 +368,9 @@ export default function ShiftsList() {
                             prev.map((s) =>
                               s.id === slot.id
                                 ? {
-                                  ...s,
-                                  headcount: parseInt(e.target.value) || 1,
-                                }
+                                    ...s,
+                                    headcount: parseInt(e.target.value) || 1,
+                                  }
                                 : s,
                             ),
                           );
@@ -422,7 +422,7 @@ export default function ShiftsList() {
                 <TableHead>Time</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead>Skill Slots</TableHead>
-                <TableHead className="w-[100px]"></TableHead>
+                <TableHead className="w-[160px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -465,21 +465,33 @@ export default function ShiftsList() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {shift.state !== 'CANCELLED' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-destructive"
-                          disabled={cancellingId === shift.id}
-                          onClick={() => handleCancel(shift.id)}
-                        >
-                          {cancellingId === shift.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </Button>
-                      )}
+                      <div className="flex gap-1.5">
+                        <Link href={`/manager/shifts/${shift.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 h-7"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
+                          </Button>
+                        </Link>
+                        {shift.state !== 'CANCELLED' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-destructive h-7 px-2"
+                            disabled={cancellingId === shift.id}
+                            onClick={() => handleCancel(shift.id)}
+                          >
+                            {cancellingId === shift.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
