@@ -155,7 +155,7 @@ export default function StaffView() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Timezone</Label>
+                  <Label>Staff Home Timezone</Label>
                   <Select value={homeTimezone} onValueChange={setHomeTimezone}>
                     <SelectTrigger>
                       <SelectValue />
