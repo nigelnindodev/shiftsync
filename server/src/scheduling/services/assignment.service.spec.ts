@@ -275,6 +275,32 @@ describe('AssignmentService (Integration)', () => {
       });
       expect(events).toHaveLength(0);
     });
+
+    it('creates assignment but keeps shift LOCKED', async () => {
+      const { employee } = await createEmployee();
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(employee.id, location.id, skill.id);
+
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-24T10:00:00Z'),
+        endTime: new Date('2026-03-24T18:00:00Z'),
+        state: ShiftState.LOCKED,
+      });
+      const shiftSkill = await dataSource.getRepository(ShiftSkillEntity).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 1,
+      });
+
+      await assignmentService.assignStaff(shift.id, shiftSkill.id, employee.id);
+
+      const updatedShift = await dataSource.getRepository(Shift).findOneBy({
+        id: shift.id,
+      });
+      expect(updatedShift?.state).toBe(ShiftState.LOCKED);
+    });
   });
 
   describe('removeAssignment', () => {
@@ -373,6 +399,42 @@ describe('AssignmentService (Integration)', () => {
       await expect(
         assignmentService.removeAssignment(shift.id, shiftSkill.id, 99999),
       ).rejects.toThrow('Assignment not found');
+    });
+
+    it('cancels assignment but keeps shift LOCKED', async () => {
+      const { employee } = await createEmployee();
+      const location = await createLocation();
+      const skill = await createSkill();
+      await certifyEmployee(employee.id, location.id, skill.id);
+
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-24T10:00:00Z'),
+        endTime: new Date('2026-03-24T18:00:00Z'),
+        state: ShiftState.LOCKED,
+      });
+      const shiftSkill = await dataSource.getRepository(ShiftSkillEntity).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 1,
+      });
+
+      const assignment = await dataSource.getRepository(Assignment).save({
+        staffMemberId: employee.id,
+        shiftSkillId: shiftSkill.id,
+        state: AssignmentState.ASSIGNED,
+      });
+
+      await assignmentService.removeAssignment(
+        shift.id,
+        shiftSkill.id,
+        assignment.id,
+      );
+
+      const updatedShift = await dataSource.getRepository(Shift).findOneBy({
+        id: shift.id,
+      });
+      expect(updatedShift?.state).toBe(ShiftState.LOCKED);
     });
   });
 
