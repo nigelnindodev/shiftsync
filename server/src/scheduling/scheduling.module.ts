@@ -9,6 +9,7 @@ import {
   RecurringAssignment,
   Schedule,
   DomainEvent,
+  Notification,
 } from './entities';
 import {
   ShiftRepository,
@@ -18,6 +19,7 @@ import {
   RecurringAssignmentRepository,
   ShiftSkillRepository,
   DomainEventRepository,
+  NotificationRepository,
 } from './repositories';
 import { StaffingModule } from '../staffing/staffing.module';
 import { UsersModule } from '../users/users.module';
@@ -38,6 +40,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { SCHEDULING_EVENTS_CLIENT } from './scheduling.constants';
 import { AppConfigService } from '../config';
 import { SchedulingReferenceService } from './services/scheduling-reference.service';
+import { NotificationGateway } from './services/notification-gateway.service';
+import { NotificationEventController } from './controllers/notification-event.controller';
+import { NotificationController } from './controllers/notification.controller';
 import { CommonModule } from '../common/common.module';
 
 @Module({
@@ -51,6 +56,7 @@ import { CommonModule } from '../common/common.module';
       RecurringAssignment,
       Schedule,
       DomainEvent,
+      Notification,
     ]),
     StaffingModule,
     UsersModule,
@@ -75,6 +81,8 @@ import { CommonModule } from '../common/common.module';
     StaffScheduleController,
     StaffAvailabilityController,
     StaffSwapDropController,
+    NotificationController,
+    NotificationEventController,
   ],
   providers: [
     ShiftRepository,
@@ -84,6 +92,8 @@ import { CommonModule } from '../common/common.module';
     RecurringAssignmentRepository,
     ShiftSkillRepository,
     DomainEventRepository,
+    NotificationRepository,
+    NotificationGateway,
     SchedulingConstraintService,
     ShiftService,
     AssignmentService,
@@ -99,6 +109,8 @@ import { CommonModule } from '../common/common.module';
     RecurringAssignmentRepository,
     ShiftSkillRepository,
     DomainEventRepository,
+    NotificationRepository,
+    NotificationGateway,
     SchedulingConstraintService,
     ShiftService,
     AssignmentService,

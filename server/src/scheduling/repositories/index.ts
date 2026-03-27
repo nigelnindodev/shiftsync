@@ -9,3 +9,4 @@ export { ShiftTemplateRepository } from './shift-template.repository';
 export { RecurringAssignmentRepository } from './recurring-assignment.repository';
 export { ShiftSkillRepository } from './shift-skill.repository';
 export { DomainEventRepository } from './domain-event.repository';
+export { NotificationRepository } from './notification.repository';

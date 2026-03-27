@@ -212,3 +212,19 @@ export interface CreateStaffDto {
   desiredHoursNote?: string;
   skillIds?: number[];
 }
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export interface NotificationDto {
+  id: number;
+  recipientId: number;
+  actorId?: number;
+  eventType: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
