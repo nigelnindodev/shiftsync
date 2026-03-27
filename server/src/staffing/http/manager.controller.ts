@@ -1,4 +1,14 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -11,8 +21,15 @@ import { Roles } from '../../security/decorators/roles.decorator';
 import { EmployeeRole } from '../../users/user.types';
 import { CurrentUser } from '../../auth/decorators/current-user-decorator';
 import { EmployeeRepository } from '../../users/employee.repository';
+import { UsersRepository } from '../../users/users.repository';
 import { ManagerLocationRepository } from '../repositories/manager-location.repository';
+import { LocationCertificationRepository } from '../repositories/location-certification.repository';
+import { StaffSkillRepository } from '../repositories/staff-skill.repository';
 import { LocationResponseDto } from '../../scheduling/dto/location-response.dto';
+import {
+  StaffLocationDto,
+  CreateStaffDto,
+} from '../../scheduling/dto/staff-location.dto';
 
 @ApiTags('manager')
 @ApiBearerAuth()
@@ -22,7 +39,10 @@ import { LocationResponseDto } from '../../scheduling/dto/location-response.dto'
 export class ManagerController {
   constructor(
     private readonly employeeRepo: EmployeeRepository,
+    private readonly usersRepo: UsersRepository,
     private readonly managerLocationRepo: ManagerLocationRepository,
+    private readonly locationCertRepo: LocationCertificationRepository,
+    private readonly staffSkillRepo: StaffSkillRepository,
   ) {}
 
   @Get('locations')
@@ -47,5 +67,116 @@ export class ManagerController {
       name: ml.location?.name ?? '',
       timezone: ml.location?.timezone ?? 'UTC',
     }));
+  }
+
+  @Get('locations/:locationId/staff')
+  @ApiOperation({ summary: 'List staff certified at a location' })
+  @ApiResponse({ status: 200, type: [StaffLocationDto] })
+  async getStaffForLocation(
+    @CurrentUser('sub') externalId: string,
+    @Param('locationId', ParseIntPipe) locationId: number,
+  ): Promise<StaffLocationDto[]> {
+    await this.assertManagerOfLocation(externalId, locationId);
+
+    const certs = await this.locationCertRepo.findByLocation(locationId);
+
+    return certs.map((cert) => {
+      const emp = cert.staffMember!;
+      const user = emp.user;
+      return {
+        id: emp.id,
+        externalId: emp.externalId,
+        name: user.name,
+        email: user.email,
+        homeTimezone: emp.homeTimezone,
+        desiredHoursPerWeek: emp.desiredHoursPerWeek,
+        desiredHoursNote: emp.desiredHoursNote,
+      };
+    });
+  }
+
+  @Post('locations/:locationId/staff')
+  @ApiOperation({ summary: 'Create a new staff member at a location' })
+  @ApiResponse({ status: 201, type: StaffLocationDto })
+  async createStaffForLocation(
+    @CurrentUser('sub') externalId: string,
+    @Param('locationId', ParseIntPipe) locationId: number,
+    @Body() dto: CreateStaffDto,
+  ): Promise<StaffLocationDto> {
+    await this.assertManagerOfLocation(externalId, locationId);
+
+    const maybeExistingUser = await this.usersRepo.findByEmail(dto.email);
+    if (maybeExistingUser.isJust) {
+      throw new ForbiddenException(
+        `A user with email ${dto.email} already exists`,
+      );
+    }
+
+    const userResult = await this.usersRepo.createUser({
+      email: dto.email,
+      name: dto.name,
+    });
+    if (userResult.isErr) {
+      throw userResult.error;
+    }
+
+    const empResult = await this.employeeRepo.createEmployee({
+      externalId: userResult.value.externalId,
+      role: EmployeeRole.STAFF,
+      homeTimezone: dto.homeTimezone,
+      desiredHoursPerWeek: dto.desiredHoursPerWeek,
+      desiredHoursNote: dto.desiredHoursNote,
+    });
+    if (empResult.isErr) {
+      throw empResult.error;
+    }
+
+    const certResult = await this.locationCertRepo.certify(
+      empResult.value.id,
+      locationId,
+    );
+    if (certResult.isErr) {
+      throw certResult.error;
+    }
+
+    if (dto.skillIds?.length) {
+      for (const skillId of dto.skillIds) {
+        const skillResult = await this.staffSkillRepo.assignSkill(
+          empResult.value.id,
+          skillId,
+        );
+        if (skillResult.isErr) {
+          throw skillResult.error;
+        }
+      }
+    }
+
+    return {
+      id: empResult.value.id,
+      externalId: userResult.value.externalId,
+      name: userResult.value.name,
+      email: userResult.value.email,
+      homeTimezone: empResult.value.homeTimezone,
+      desiredHoursPerWeek: empResult.value.desiredHoursPerWeek,
+      desiredHoursNote: empResult.value.desiredHoursNote,
+    };
+  }
+
+  private async assertManagerOfLocation(
+    externalId: string,
+    locationId: number,
+  ): Promise<void> {
+    const maybeEmployee = await this.employeeRepo.findByExternalId(externalId);
+    if (maybeEmployee.isNothing) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const isManager = await this.managerLocationRepo.isManagerOfLocation(
+      maybeEmployee.value.id,
+      locationId,
+    );
+    if (!isManager) {
+      throw new ForbiddenException('You are not assigned to this location');
+    }
   }
 }

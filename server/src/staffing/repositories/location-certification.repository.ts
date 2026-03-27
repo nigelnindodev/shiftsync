@@ -69,4 +69,11 @@ export class LocationCertificationRepository {
   ): Promise<LocationCertification[]> {
     return this.repo.find({ where: { staffMemberId } });
   }
+
+  async findByLocation(locationId: number): Promise<LocationCertification[]> {
+    return this.repo.find({
+      where: { locationId },
+      relations: ['staffMember', 'staffMember.user'],
+    });
+  }
 }

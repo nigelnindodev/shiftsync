@@ -24,6 +24,6 @@ import { RolesGuard } from 'src/security/guards/roles.guard';
     UsersMicroserviceController,
     TestingController,
   ],
-  exports: [UsersService, EmployeeRepository, RolesGuard],
+  exports: [UsersService, UsersRepository, EmployeeRepository, RolesGuard],
 })
 export class UsersModule {}
