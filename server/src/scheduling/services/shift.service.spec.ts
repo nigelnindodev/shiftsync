@@ -274,6 +274,27 @@ describe('ShiftService (Integration)', () => {
       );
     });
 
+    it('rejects cancel for locked shift', async () => {
+      const location = await createLocation();
+      const skill = await createSkill();
+
+      const shift = await dataSource.getRepository(Shift).save({
+        locationId: location.id,
+        startTime: new Date('2026-03-24T10:00:00Z'),
+        endTime: new Date('2026-03-24T18:00:00Z'),
+        state: ShiftState.LOCKED,
+      });
+      await dataSource.getRepository(ShiftSkill).save({
+        shiftId: shift.id,
+        skillId: skill.id,
+        headcount: 1,
+      });
+
+      await expect(shiftService.cancelShift(shift.id)).rejects.toThrow(
+        'Cannot cancel shift in state LOCKED',
+      );
+    });
+
     it('cancels pending swap requests when shift is cancelled', async () => {
       const location = await createLocation();
       const skill = await createSkill();

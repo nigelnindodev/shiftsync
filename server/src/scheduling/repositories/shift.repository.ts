@@ -134,6 +134,10 @@ export class ShiftRepository {
     state: ShiftState,
   ): Promise<Result<void, Error>> {
     try {
+      const shift = await this.shiftRepo.findOneBy({ id });
+      if (shift?.state === ShiftState.LOCKED) {
+        return Result.ok(undefined);
+      }
       await this.shiftRepo.update(id, { state });
       return Result.ok(undefined);
     } catch (e) {

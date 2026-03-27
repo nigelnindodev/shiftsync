@@ -40,7 +40,7 @@ npm run client:start     # Start client (production mode)
 ```bash
 npm run build              # Build with NestJS compiler (SWC)
 npm run lint               # Lint with ESLint (fixes issues)
-npm run test               # Run all unit tests
+npm run test -- --runInBand  # Run all unit tests
 npm run test:watch         # Run tests in watch mode
 npm run test:cov           # Run tests with coverage
 npm run test -- --testNamePattern="test name"   # Run single test by name
