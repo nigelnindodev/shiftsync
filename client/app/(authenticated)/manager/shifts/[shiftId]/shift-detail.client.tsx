@@ -35,7 +35,7 @@ import {
   useAssignStaff,
   useRemoveAssignment,
 } from '@/hooks/use-assignments';
-import { useLocations } from '@/hooks/use-reference-data';
+import { useManagerLocations } from '@/hooks/use-reference-data';
 import type {
   AssignmentResponseDto,
   SlotAssignmentsResponseDto,
@@ -68,11 +68,24 @@ export default function ShiftDetailView({ shiftId }: { shiftId: number }) {
     refetch: refetchShift,
   } = useShift(shiftId);
   const slotIds = shift?.skills.map((s) => s.id) || [];
-  const { data: slots = [], isLoading: isLoadingSlots } = useAllSlotAssignments(
-    shiftId,
-    slotIds,
+  const { data: assignmentResponses = [], isLoading: isLoadingSlots } =
+    useAllSlotAssignments(shiftId, slotIds);
+
+  const slots: SlotAssignmentsResponseDto[] = useMemo(
+    () =>
+      shift
+        ? shift.skills.map((skill, i) => ({
+            slotId: skill.id,
+            skillId: skill.skillId,
+            skillName: skill.skillName,
+            headcount: skill.headcount,
+            assignedCount: skill.assignedCount,
+            assignments: assignmentResponses[i] ?? [],
+          }))
+        : [],
+    [shift, assignmentResponses],
   );
-  const { data: locations = [] } = useLocations();
+  const { data: locations = [] } = useManagerLocations();
 
   const [activeSlotId, setActiveSlotId] = useState<number | null>(null);
 

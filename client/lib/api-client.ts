@@ -1,5 +1,6 @@
 import type {
   ApproveSwapDropDto,
+  AssignmentResponseDto,
   CreateAssignmentDto,
   CreateShiftDto,
   EligibleStaffDto,
@@ -8,7 +9,6 @@ import type {
   RequestSwapDto,
   ShiftResponseDto,
   SkillResponseDto,
-  SlotAssignmentsResponseDto,
   StaffAvailabilityExceptionResponseDto,
   StaffAvailabilityResponseDto,
   StaffScheduleEntryDto,
@@ -314,7 +314,7 @@ export const apiClient = {
   async getAssignments(
     shiftId: number,
     slotId: number,
-  ): Promise<SlotAssignmentsResponseDto> {
+  ): Promise<AssignmentResponseDto[]> {
     const response = await fetch(
       `${serverUrl}/shifts/${shiftId}/skills/${slotId}/assignments`,
       {
