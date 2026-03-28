@@ -19,9 +19,9 @@ export class Notification {
 
   @ManyToOne(() => Employee, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'recipient_id' })
+  @Index()
   recipient: Employee;
 
-  @Index()
   @Column({ name: 'recipient_id' })
   recipientId: number;
 

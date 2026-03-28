@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Param,
@@ -32,6 +33,8 @@ import { Notification } from '../entities/notification.entity';
 @Controller('notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationController {
+  private static readonly MAX_LIMIT = 100;
+
   constructor(
     private readonly notificationRepo: NotificationRepository,
     private readonly gateway: NotificationGateway,
@@ -48,9 +51,27 @@ export class NotificationController {
     @Query('unreadOnly') unreadOnly?: string,
   ): Promise<Notification[]> {
     const employee = req['employee'] as Employee;
+
+    let parsedLimit = 20;
+    if (limit !== undefined) {
+      parsedLimit = parseInt(limit, 10);
+      if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
+        throw new BadRequestException('limit must be a positive integer');
+      }
+      parsedLimit = Math.min(parsedLimit, NotificationController.MAX_LIMIT);
+    }
+
+    let parsedOffset = 0;
+    if (offset !== undefined) {
+      parsedOffset = parseInt(offset, 10);
+      if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
+        throw new BadRequestException('offset must be a non-negative integer');
+      }
+    }
+
     return this.notificationRepo.findByRecipient(employee.id, {
-      limit: limit ? parseInt(limit, 10) : 20,
-      offset: offset ? parseInt(offset, 10) : 0,
+      limit: parsedLimit,
+      offset: parsedOffset,
       unreadOnly: unreadOnly === 'true',
     });
   }
