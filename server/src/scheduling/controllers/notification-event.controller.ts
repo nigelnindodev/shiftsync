@@ -18,6 +18,7 @@ import { NotificationGateway } from '../services/notification-gateway.service';
 import { ManagerLocationRepository } from '../../staffing/repositories/manager-location.repository';
 import { ShiftRepository } from '../repositories/shift.repository';
 import { AssignmentRepository } from '../repositories/assignment.repository';
+import { EmployeeRepository } from '../../users/employee.repository';
 import { Notification } from '../entities/notification.entity';
 
 @Controller()
@@ -30,7 +31,17 @@ export class NotificationEventController {
     private readonly managerLocationRepo: ManagerLocationRepository,
     private readonly shiftRepo: ShiftRepository,
     private readonly assignmentRepo: AssignmentRepository,
+    private readonly employeeRepo: EmployeeRepository,
   ) {}
+
+  private async getActorName(
+    actorId: number | undefined,
+  ): Promise<string | undefined> {
+    if (!actorId) return undefined;
+    const maybeEmployee = await this.employeeRepo.findByIdWithUser(actorId);
+    if (maybeEmployee.isNothing) return undefined;
+    return maybeEmployee.value.user?.name;
+  }
 
   private async notify(
     recipientId: number,
@@ -62,10 +73,15 @@ export class NotificationEventController {
   async onAssignmentCreated(
     @Payload() payload: AssignmentCreatedEvent,
   ): Promise<void> {
+    const actorName = await this.getActorName(payload.assignedByManagerId);
+    const message = actorName
+      ? `Manager ${actorName} assigned you to a shift`
+      : "You've been assigned to a shift";
+
     await this.notify(payload.staffMemberId, {
       actorId: payload.assignedByManagerId,
       eventType: SchedulingEventPatterns.ASSIGNMENT_CREATED,
-      message: "You've been assigned to a shift",
+      message,
       link: `/staff/schedule/${payload.shiftId}`,
     });
   }
@@ -74,20 +90,30 @@ export class NotificationEventController {
   async onAssignmentRemoved(
     @Payload() payload: AssignmentRemovedEvent,
   ): Promise<void> {
+    const actorName = await this.getActorName(payload.removedByManagerId);
+    const message = actorName
+      ? `Manager ${actorName} removed you from a shift`
+      : "You've been removed from a shift";
+
     await this.notify(payload.staffMemberId, {
       actorId: payload.removedByManagerId,
       eventType: SchedulingEventPatterns.ASSIGNMENT_REMOVED,
-      message: "You've been removed from a shift",
+      message,
       link: `/staff/schedule/${payload.shiftId}`,
     });
   }
 
   @EventPattern(SchedulingEventPatterns.SWAP_REQUESTED)
   async onSwapRequested(@Payload() payload: SwapRequestedEvent): Promise<void> {
+    const actorName = await this.getActorName(payload.staffMemberId);
+    const message = actorName
+      ? `${actorName} requested a swap with you`
+      : 'A swap request has been sent to you';
+
     await this.notify(payload.targetStaffMemberId, {
       actorId: payload.staffMemberId,
       eventType: SchedulingEventPatterns.SWAP_REQUESTED,
-      message: 'A swap request has been sent to you',
+      message,
       link: '/staff/swap-requests',
     });
   }
@@ -99,10 +125,15 @@ export class NotificationEventController {
     );
     if (!original) return;
 
+    const actorName = await this.getActorName(payload.staffMemberId);
+    const message = actorName
+      ? `${actorName} accepted your swap request`
+      : 'Your swap request was accepted';
+
     await this.notify(original.staffMemberId, {
       actorId: payload.staffMemberId,
       eventType: SchedulingEventPatterns.SWAP_ACCEPTED,
-      message: 'Your swap request was accepted',
+      message,
       link: '/staff/swap-requests',
     });
   }
@@ -118,12 +149,17 @@ export class NotificationEventController {
     if (original) staffIds.add(original.staffMemberId);
     if (partner) staffIds.add(partner.staffMemberId);
 
+    const actorName = await this.getActorName(payload.approvedByManagerId);
+    const message = actorName
+      ? `Manager ${actorName} approved your swap`
+      : 'Your swap was approved by a manager';
+
     for (const staffId of staffIds) {
       await this.notify(staffId, {
         actorId: payload.approvedByManagerId,
         eventType: SchedulingEventPatterns.SWAP_APPROVED,
-        message: 'Your swap was approved by a manager',
-        link: `/staff/schedule/${payload.shiftId}`,
+        message,
+        link: '/staff/swap-requests',
       });
     }
   }
@@ -139,12 +175,17 @@ export class NotificationEventController {
     if (original) staffIds.add(original.staffMemberId);
     if (partner) staffIds.add(partner.staffMemberId);
 
+    const actorName = await this.getActorName(payload.rejectedByManagerId);
+    const message = actorName
+      ? `Manager ${actorName} rejected your swap`
+      : 'Your swap was rejected';
+
     for (const staffId of staffIds) {
       await this.notify(staffId, {
         actorId: payload.rejectedByManagerId,
         eventType: SchedulingEventPatterns.SWAP_REJECTED,
-        message: 'Your swap was rejected',
-        link: `/staff/schedule/${payload.shiftId}`,
+        message,
+        link: '/staff/swap-requests',
       });
     }
   }
@@ -158,11 +199,16 @@ export class NotificationEventController {
       maybeShift.value.locationId,
     );
 
+    const actorName = await this.getActorName(payload.staffMemberId);
+    const message = actorName
+      ? `${actorName} requested to drop a shift`
+      : 'A staff member requested to drop a shift';
+
     for (const ml of managers) {
       await this.notify(ml.managerId, {
         actorId: payload.staffMemberId,
         eventType: SchedulingEventPatterns.DROP_REQUESTED,
-        message: 'A staff member requested to drop a shift',
+        message,
         link: '/manager/approvals',
       });
     }
@@ -175,10 +221,15 @@ export class NotificationEventController {
     );
     if (!original) return;
 
+    const actorName = await this.getActorName(payload.claimedByStaffId);
+    const message = actorName
+      ? `${actorName} claimed your drop request`
+      : 'Your drop request was claimed';
+
     await this.notify(original.staffMemberId, {
       actorId: payload.claimedByStaffId,
       eventType: SchedulingEventPatterns.DROP_CLAIMED,
-      message: 'Your drop request was claimed',
+      message,
       link: '/staff/swap-requests',
     });
   }
@@ -194,12 +245,17 @@ export class NotificationEventController {
     if (original) staffIds.add(original.staffMemberId);
     if (partner) staffIds.add(partner.staffMemberId);
 
+    const actorName = await this.getActorName(payload.approvedByManagerId);
+    const message = actorName
+      ? `Manager ${actorName} approved your drop`
+      : 'Your drop was approved';
+
     for (const staffId of staffIds) {
       await this.notify(staffId, {
         actorId: payload.approvedByManagerId,
         eventType: SchedulingEventPatterns.DROP_APPROVED,
-        message: 'Your drop was approved',
-        link: `/staff/schedule/${payload.shiftId}`,
+        message,
+        link: '/staff/swap-requests',
       });
     }
   }
@@ -211,10 +267,15 @@ export class NotificationEventController {
     );
     if (!original) return;
 
+    const actorName = await this.getActorName(payload.rejectedByManagerId);
+    const message = actorName
+      ? `Manager ${actorName} rejected your drop request`
+      : 'Your drop request was rejected';
+
     await this.notify(original.staffMemberId, {
       actorId: payload.rejectedByManagerId,
       eventType: SchedulingEventPatterns.DROP_REJECTED,
-      message: 'Your drop request was rejected',
+      message,
       link: '/staff/swap-requests',
     });
   }
