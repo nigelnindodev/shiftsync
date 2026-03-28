@@ -157,7 +157,9 @@ export interface ApproveSwapDropDto {
 // ---------------------------------------------------------------------------
 
 export type PendingApprovalState =
+  | 'SWAP_REQUESTED'
   | 'SWAP_PENDING_APPROVAL'
+  | 'DROP_REQUESTED'
   | 'DROP_PENDING_APPROVAL';
 
 export interface PendingApprovalDto {
