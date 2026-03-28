@@ -6,6 +6,7 @@ import type {
   CreateStaffDto,
   EligibleStaffDto,
   LocationResponseDto,
+  NotificationDto,
   PendingApprovalDto,
   RequestSwapDto,
   ShiftResponseDto,
@@ -435,6 +436,58 @@ export const apiClient = {
         body: JSON.stringify(data),
       },
     );
+    return handleResponse(response);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------------------------
+
+  async getNotifications(options?: {
+    limit?: number;
+    offset?: number;
+    unreadOnly?: boolean;
+  }): Promise<NotificationDto[]> {
+    const params = new URLSearchParams();
+    if (options?.limit !== undefined)
+      params.set('limit', String(options.limit));
+    if (options?.offset !== undefined)
+      params.set('offset', String(options.offset));
+    if (options?.unreadOnly) params.set('unreadOnly', 'true');
+    const qs = params.toString();
+    const response = await fetch(
+      `${serverUrl}/notifications${qs ? `?${qs}` : ''}`,
+      {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    return handleResponse(response);
+  },
+
+  async getUnreadCount(): Promise<{ count: number }> {
+    const response = await fetch(`${serverUrl}/notifications/unread-count`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return handleResponse(response);
+  },
+
+  async markNotificationRead(id: number): Promise<{ success: boolean }> {
+    const response = await fetch(`${serverUrl}/notifications/${id}/read`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return handleResponse(response);
+  },
+
+  async markAllNotificationsRead(): Promise<{ updated: number }> {
+    const response = await fetch(`${serverUrl}/notifications/read-all`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
     return handleResponse(response);
   },
 };

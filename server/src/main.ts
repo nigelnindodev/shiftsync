@@ -18,7 +18,7 @@ async function bootstrap() {
   httpApp.enableCors({
     origin: 'http://localhost:3000', // new env var for this
     credentials: true,
-    methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   configSwagger(httpApp);
