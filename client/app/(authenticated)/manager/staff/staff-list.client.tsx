@@ -280,6 +280,7 @@ export default function StaffView() {
                 <TableHead>Email</TableHead>
                 <TableHead>Timezone</TableHead>
                 <TableHead>Desired Hours</TableHead>
+                <TableHead>Skills</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -292,6 +293,9 @@ export default function StaffView() {
                     {member.desiredHoursPerWeek != null
                       ? `${member.desiredHoursPerWeek}h`
                       : '—'}
+                  </TableCell>
+                  <TableCell>
+                    {member.skills.length > 0 ? member.skills.join(', ') : '—'}
                   </TableCell>
                 </TableRow>
               ))}

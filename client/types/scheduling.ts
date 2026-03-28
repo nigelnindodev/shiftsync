@@ -204,6 +204,7 @@ export interface StaffLocationDto {
   homeTimezone: string;
   desiredHoursPerWeek?: number;
   desiredHoursNote?: string;
+  skills: string[];
 }
 
 export interface CreateStaffDto {

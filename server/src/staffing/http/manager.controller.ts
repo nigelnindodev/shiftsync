@@ -91,6 +91,10 @@ export class ManagerController {
         homeTimezone: emp.homeTimezone,
         desiredHoursPerWeek: emp.desiredHoursPerWeek,
         desiredHoursNote: emp.desiredHoursNote,
+        skills: (emp.staffSkills ?? [])
+          .map((ss) => ss.skill?.name)
+          .filter((name): name is string => !!name)
+          .sort(),
       };
     });
   }
@@ -159,6 +163,7 @@ export class ManagerController {
       homeTimezone: empResult.value.homeTimezone,
       desiredHoursPerWeek: empResult.value.desiredHoursPerWeek,
       desiredHoursNote: empResult.value.desiredHoursNote,
+      skills: [],
     };
   }
 
