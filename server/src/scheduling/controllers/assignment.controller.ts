@@ -112,13 +112,14 @@ export class AssignmentController {
     @Param('assignmentId', ParseIntPipe) assignmentId: number,
     @Body() dto: ApproveSwapDropDto,
     @Req() req: Request,
-  ): Promise<void> {
+  ) {
     const employee = req['employee'] as Employee;
-    return this.assignmentService.approveSwapDrop(
+    await this.assignmentService.approveSwapDrop(
       assignmentId,
       slotId,
       employee.id,
       dto.approved,
     );
+    return { result: 'ok' };
   }
 }
