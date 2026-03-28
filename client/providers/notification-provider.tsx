@@ -33,7 +33,7 @@ export function NotificationProvider({
     (notification: NotificationDto) => {
       // Update notifications list cache for all query variations (e.g. different limit/offset)
       queryClient.setQueriesData<NotificationDto[]>(
-        { queryKey: ['notifications'], exact: false, type: 'active' },
+        { queryKey: ['notifications'], exact: false },
         (old: NotificationDto[] | undefined) => {
           if (!old) return [notification];
           return [notification, ...old];

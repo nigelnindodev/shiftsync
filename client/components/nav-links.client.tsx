@@ -33,7 +33,7 @@ const staffLinks: NavLink[] = [
   },
   {
     href: '/staff/swap-requests',
-    label: 'Swap Requests',
+    label: 'Swap/Drop Requests',
     icon: <Shuffle className="w-4 h-4" />,
   },
 ];
