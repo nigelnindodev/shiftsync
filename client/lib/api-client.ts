@@ -449,8 +449,10 @@ export const apiClient = {
     unreadOnly?: boolean;
   }): Promise<NotificationDto[]> {
     const params = new URLSearchParams();
-    if (options?.limit) params.set('limit', String(options.limit));
-    if (options?.offset) params.set('offset', String(options.offset));
+    if (options?.limit !== undefined)
+      params.set('limit', String(options.limit));
+    if (options?.offset !== undefined)
+      params.set('offset', String(options.offset));
     if (options?.unreadOnly) params.set('unreadOnly', 'true');
     const qs = params.toString();
     const response = await fetch(

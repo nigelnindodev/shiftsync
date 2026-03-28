@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -36,7 +36,12 @@ export function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const { data: unreadData } = useUnreadCount();
-  const { data: notifications } = useNotifications({ limit: 20 });
+  const {
+    data: notifications,
+    isLoading: notificationsLoading,
+    isError: notificationsError,
+    refetch: refetchNotifications,
+  } = useNotifications({ limit: 20 });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
@@ -112,7 +117,23 @@ export function NotificationBell() {
           </div>
 
           <div className="max-h-80 overflow-y-auto">
-            {notifications && notifications.length > 0 ? (
+            {notificationsLoading ? (
+              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Loading...
+              </div>
+            ) : notificationsError ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-8 text-sm">
+                <p className="text-destructive">Failed to load notifications</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchNotifications()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : notifications && notifications.length > 0 ? (
               notifications.map((n) => (
                 <button
                   key={n.id}

@@ -12,6 +12,7 @@ import {
 import { User } from './user.entity';
 import { EmployeeRole } from '../user.types';
 import { StaffSkill } from '../../staffing/entities/staff-skill.entity';
+import { Notification } from '../../scheduling/entities/notification.entity';
 
 @Entity('employee')
 @Check(
@@ -47,6 +48,12 @@ export class Employee {
 
   @OneToMany(() => StaffSkill, (staffSkill) => staffSkill.staffMember)
   staffSkills: StaffSkill[];
+
+  @OneToMany(() => Notification, (notification) => notification.recipient)
+  recipientNotifications: Notification[];
+
+  @OneToMany(() => Notification, (notification) => notification.actor)
+  actorNotifications: Notification[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
