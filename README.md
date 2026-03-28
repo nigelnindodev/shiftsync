@@ -57,7 +57,7 @@ This is the simplest way to get the entire stack (Database, Redis, API, and Fron
 1.  **Clone the repository:**
     ```bash
     git clone <repository-url>
-    cd xborg
+    cd <directory> 
     ```
 
 2.  **Start the services:**
@@ -107,6 +107,8 @@ If you prefer to run services locally or need to debug specific parts without Do
     # OR for development
     cd client && npm run dev
     ```
+### Option 3: Live server
+Live server not set up yet. Quickest option to get started is with docker compose.
 
 ## Development
 
