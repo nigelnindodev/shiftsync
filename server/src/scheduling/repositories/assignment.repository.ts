@@ -374,8 +374,10 @@ export class AssignmentRepository {
         l.name AS "locationName",
         sk.name AS "skillName",
         CASE
-          WHEN a.state IN ('SWAP_REQUESTED', 'DROP_REQUESTED') THEN
-            (SELECT u.name FROM users u WHERE u.id = a.swap_target_id)
+          WHEN a.state = 'SWAP_REQUESTED' THEN
+            (SELECT u.name FROM employee se JOIN users u ON se.external_id = u.external_id WHERE se.id = a.swap_target_id)
+          WHEN a.state IN ('DROP_REQUESTED') THEN
+            NULL
           WHEN a.state IN ('SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL') AND a.swap_target_id IS NOT NULL THEN
             (SELECT u.name FROM assignments pa
              JOIN employee pe ON pa.staff_member_id = pe.id
@@ -443,8 +445,10 @@ export class AssignmentRepository {
         l.name AS "locationName",
         sk.name AS "skillName",
         CASE
-          WHEN a.state IN ('SWAP_REQUESTED', 'DROP_REQUESTED') THEN
-            (SELECT u.name FROM users u WHERE u.id = a.swap_target_id)
+          WHEN a.state = 'SWAP_REQUESTED' THEN
+            (SELECT u.name FROM employee se JOIN users u ON se.external_id = u.external_id WHERE se.id = a.swap_target_id)
+          WHEN a.state IN ('DROP_REQUESTED') THEN
+            NULL
           WHEN a.state IN ('SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL') AND a.swap_target_id IS NOT NULL THEN
             (SELECT u.name FROM assignments pa
              JOIN employee pe ON pa.staff_member_id = pe.id
