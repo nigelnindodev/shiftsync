@@ -33,6 +33,13 @@ export class StaffLocationDto {
 
   @ApiPropertyOptional({ description: 'Hours note' })
   desiredHoursNote?: string;
+
+  @ApiProperty({
+    description: 'Skill names',
+    example: ['Bartender', 'Server'],
+    type: [String],
+  })
+  skills: string[];
 }
 
 export class CreateStaffDto {

@@ -263,6 +263,17 @@ export const apiClient = {
     await handleResponse(response);
   },
 
+  async getStaffSwapDropRequests(): Promise<PendingApprovalDto[]> {
+    const response = await fetch(
+      `${serverUrl}/staff/me/assignments/swap-drop-requests`,
+      {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    return handleResponse(response);
+  },
+
   // ---------------------------------------------------------------------------
   // Manager — Shifts
   // ---------------------------------------------------------------------------

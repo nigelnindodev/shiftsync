@@ -15,6 +15,7 @@ export function useNotifications(options?: {
   return useQuery<NotificationDto[]>({
     queryKey: [...NOTIFICATIONS_KEY, options],
     queryFn: () => apiClient.getNotifications(options),
+    staleTime: 30_000,
   });
 }
 

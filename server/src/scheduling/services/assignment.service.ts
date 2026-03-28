@@ -274,6 +274,10 @@ export class AssignmentService {
     if (maybeTarget.isNothing)
       throw new NotFoundException('Target staff member not found');
 
+    if (targetStaffMemberId === staffMemberId) {
+      throw new BadRequestException('Cannot swap with yourself');
+    }
+
     const pendingCount =
       await this.assignmentRepo.countPendingRequests(staffMemberId);
     if (pendingCount >= MAX_PENDING_SWAP_DROP) {
@@ -788,7 +792,11 @@ export class AssignmentService {
       assignmentId: number;
       staffMemberId: number;
       staffName: string;
-      state: 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL';
+      state:
+        | 'SWAP_REQUESTED'
+        | 'SWAP_PENDING_APPROVAL'
+        | 'DROP_REQUESTED'
+        | 'DROP_PENDING_APPROVAL';
       shiftId: number;
       slotId: number;
       shiftDate: string;
@@ -812,7 +820,61 @@ export class AssignmentService {
         assignmentId: r.assignmentId,
         staffMemberId: r.staffMemberId,
         staffName: r.staffName,
-        state: r.state as 'SWAP_PENDING_APPROVAL' | 'DROP_PENDING_APPROVAL',
+        state: r.state as
+          | 'SWAP_REQUESTED'
+          | 'SWAP_PENDING_APPROVAL'
+          | 'DROP_REQUESTED'
+          | 'DROP_PENDING_APPROVAL',
+        shiftId: r.shiftId,
+        slotId: r.slotId,
+        shiftDate,
+        shiftTime: `${startTime} - ${endTime}`,
+        locationId: r.locationId,
+        locationName: r.locationName,
+        skillName: r.skillName,
+        swapTargetName: r.swapTargetName,
+      };
+    });
+  }
+
+  async getStaffPendingRequests(staffMemberId: number): Promise<
+    Array<{
+      assignmentId: number;
+      staffMemberId: number;
+      staffName: string;
+      state:
+        | 'SWAP_REQUESTED'
+        | 'SWAP_PENDING_APPROVAL'
+        | 'DROP_REQUESTED'
+        | 'DROP_PENDING_APPROVAL';
+      shiftId: number;
+      slotId: number;
+      shiftDate: string;
+      shiftTime: string;
+      locationId: number;
+      locationName: string;
+      skillName: string;
+      swapTargetName: string | null;
+    }>
+  > {
+    const rows = await this.assignmentRepo.findPendingForStaff(staffMemberId);
+
+    return rows.map((r) => {
+      const startDate = new Date(r.startTime);
+      const endDate = new Date(r.endTime);
+      const shiftDate = startDate.toISOString().split('T')[0];
+      const startTime = startDate.toISOString().split('T')[1].substring(0, 5);
+      const endTime = endDate.toISOString().split('T')[1].substring(0, 5);
+
+      return {
+        assignmentId: r.assignmentId,
+        staffMemberId: r.staffMemberId,
+        staffName: r.staffName,
+        state: r.state as
+          | 'SWAP_REQUESTED'
+          | 'SWAP_PENDING_APPROVAL'
+          | 'DROP_REQUESTED'
+          | 'DROP_PENDING_APPROVAL',
         shiftId: r.shiftId,
         slotId: r.slotId,
         shiftDate,

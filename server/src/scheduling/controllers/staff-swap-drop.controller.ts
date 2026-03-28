@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -23,6 +24,7 @@ import { EmployeeRole } from '../../users/user.types';
 import { Employee } from '../../users/entity/employee.entity';
 import { AssignmentService } from '../services/assignment.service';
 import { RequestSwapDto } from '../dto/assignment.dto';
+import { PendingApprovalDto } from '../dto/pending-approval.dto';
 
 @ApiTags('staff-swap-drop')
 @ApiBearerAuth()
@@ -30,6 +32,20 @@ import { RequestSwapDto } from '../dto/assignment.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StaffSwapDropController {
   constructor(private readonly assignmentService: AssignmentService) {}
+
+  @Get('swap-drop-requests')
+  @Roles(EmployeeRole.STAFF)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get pending swap/drop requests relevant to the staff member',
+  })
+  @ApiResponse({ status: 200, type: [PendingApprovalDto] })
+  async getStaffSwapDropRequests(
+    @Req() req: Request,
+  ): Promise<PendingApprovalDto[]> {
+    const employee = req['employee'] as Employee;
+    return this.assignmentService.getStaffPendingRequests(employee.id);
+  }
 
   @Post(':assignmentId/swap')
   @Roles(EmployeeRole.STAFF)

@@ -374,8 +374,10 @@ export class AssignmentRepository {
         l.name AS "locationName",
         sk.name AS "skillName",
         CASE
-          WHEN a.state IN ('SWAP_REQUESTED', 'DROP_REQUESTED') THEN
-            (SELECT u.name FROM users u WHERE u.id = a.swap_target_id)
+          WHEN a.state = 'SWAP_REQUESTED' THEN
+            (SELECT u.name FROM employee se JOIN users u ON se.external_id = u.external_id WHERE se.id = a.swap_target_id)
+          WHEN a.state IN ('DROP_REQUESTED') THEN
+            NULL
           WHEN a.state IN ('SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL') AND a.swap_target_id IS NOT NULL THEN
             (SELECT u.name FROM assignments pa
              JOIN employee pe ON pa.staff_member_id = pe.id
@@ -395,6 +397,86 @@ export class AssignmentRepository {
       ORDER BY s.start_time ASC
       `,
       [locationId, PENDING_SWAP_DROP_STATES],
+    );
+    return (results as Array<Record<string, unknown>>).map((r) => ({
+      assignmentId: r.assignmentId as number,
+      staffMemberId: r.staffMemberId as number,
+      staffName: r.staffName as string,
+      state: r.state as string,
+      shiftId: r.shiftId as number,
+      slotId: r.slotId as number,
+      startTime: r.startTime as Date,
+      endTime: r.endTime as Date,
+      locationId: r.locationId as number,
+      locationName: r.locationName as string,
+      skillName: r.skillName as string,
+      swapTargetName: r.swapTargetName as string | null,
+    }));
+  }
+
+  async findPendingForStaff(staffMemberId: number): Promise<
+    Array<{
+      assignmentId: number;
+      staffMemberId: number;
+      staffName: string;
+      state: string;
+      shiftId: number;
+      slotId: number;
+      startTime: Date;
+      endTime: Date;
+      locationId: number;
+      locationName: string;
+      skillName: string;
+      swapTargetName: string | null;
+    }>
+  > {
+    const results: unknown = await this.repo.manager.query(
+      `
+      SELECT
+        a.id AS "assignmentId",
+        a.staff_member_id AS "staffMemberId",
+        eu.name AS "staffName",
+        a.state,
+        s.id AS "shiftId",
+        ss.id AS "slotId",
+        s.start_time AS "startTime",
+        s.end_time AS "endTime",
+        l.id AS "locationId",
+        l.name AS "locationName",
+        sk.name AS "skillName",
+        CASE
+          WHEN a.state = 'SWAP_REQUESTED' THEN
+            (SELECT u.name FROM employee se JOIN users u ON se.external_id = u.external_id WHERE se.id = a.swap_target_id)
+          WHEN a.state IN ('DROP_REQUESTED') THEN
+            NULL
+          WHEN a.state IN ('SWAP_PENDING_APPROVAL', 'DROP_PENDING_APPROVAL') AND a.swap_target_id IS NOT NULL THEN
+            (SELECT u.name FROM assignments pa
+             JOIN employee pe ON pa.staff_member_id = pe.id
+             JOIN users u ON pe.external_id = u.external_id
+             WHERE pa.id = a.swap_target_id)
+          ELSE NULL
+        END AS "swapTargetName"
+      FROM assignments a
+      JOIN shift_skills ss ON a.shift_skill_id = ss.id
+      JOIN shifts s ON ss.shift_id = s.id
+      JOIN locations l ON s.location_id = l.id
+      JOIN skills sk ON ss.skill_id = sk.id
+      JOIN employee e ON a.staff_member_id = e.id
+      JOIN users eu ON e.external_id = eu.external_id
+      WHERE a.state = ANY($2)
+        AND (
+          (a.state = 'SWAP_REQUESTED' AND a.swap_target_id = $1)
+          OR (a.state = 'SWAP_PENDING_APPROVAL' AND a.staff_member_id = $1)
+          OR (a.state = 'DROP_REQUESTED' AND a.swap_target_id IS NULL
+              AND a.staff_member_id != $1
+              AND ss.skill_id IN (
+                SELECT ss2.skill_id FROM staff_skills ss2 WHERE ss2.staff_member_id = $1
+              ))
+          OR (a.state = 'DROP_PENDING_APPROVAL' AND a.staff_member_id = $1)
+        )
+      ORDER BY s.start_time ASC
+      `,
+      [staffMemberId, PENDING_SWAP_DROP_STATES],
     );
     return (results as Array<Record<string, unknown>>).map((r) => ({
       assignmentId: r.assignmentId as number,

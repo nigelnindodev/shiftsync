@@ -171,7 +171,7 @@ export default function StaffView() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Desired Hours / Week</Label>
+                  <Label>Desired Hours / Week *</Label>
                   <Input
                     type="number"
                     min={0}
@@ -227,6 +227,7 @@ export default function StaffView() {
                     !email ||
                     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
                     !name ||
+                    !desiredHours ||
                     createMutation.isPending
                   }
                 >
@@ -279,6 +280,7 @@ export default function StaffView() {
                 <TableHead>Email</TableHead>
                 <TableHead>Timezone</TableHead>
                 <TableHead>Desired Hours</TableHead>
+                <TableHead>Skills</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -291,6 +293,9 @@ export default function StaffView() {
                     {member.desiredHoursPerWeek != null
                       ? `${member.desiredHoursPerWeek}h`
                       : '—'}
+                  </TableCell>
+                  <TableCell>
+                    {member.skills.length > 0 ? member.skills.join(', ') : '—'}
                   </TableCell>
                 </TableRow>
               ))}

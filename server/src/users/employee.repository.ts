@@ -22,6 +22,15 @@ export class EmployeeRepository {
     return Maybe.of(await this.employeeRepository.findOneBy({ externalId }));
   }
 
+  async findByIdWithUser(id: number): Promise<Maybe<Employee>> {
+    const employee = await this.employeeRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+
+    return Maybe.of(employee);
+  }
+
   async findByExternalIdWithUser(externalId: string): Promise<Maybe<Employee>> {
     const employee = await this.employeeRepository.findOne({
       where: { externalId },
