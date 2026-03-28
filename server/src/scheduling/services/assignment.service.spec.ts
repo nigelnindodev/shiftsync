@@ -834,7 +834,7 @@ describe('AssignmentService (Integration)', () => {
       ).toBe(true);
     });
 
-    it('rejects drop: cancels claimer, reverts original to DROP_REQUESTED', async () => {
+    it('rejects drop: cancels claimer, reverts original to ASSIGNED', async () => {
       const { employee: staffA } = await createEmployee('Staff A');
       const { employee: staffB } = await createEmployee('Staff B');
       const { employee: manager } = await createEmployee('Manager');
@@ -868,7 +868,7 @@ describe('AssignmentService (Integration)', () => {
       const updatedA = await dataSource
         .getRepository(Assignment)
         .findOneBy({ id: assignmentA.id });
-      expect(updatedA?.state).toBe(AssignmentState.DROP_REQUESTED);
+      expect(updatedA?.state).toBe(AssignmentState.ASSIGNED);
 
       const updatedB = await dataSource
         .getRepository(Assignment)

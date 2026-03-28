@@ -592,6 +592,12 @@ export class AssignmentService {
     managerId: number,
     approved: boolean,
   ): Promise<void> {
+    this.logger.log('Approve swap/drop request received', {
+      assignmentId,
+      slotId,
+      managerId,
+      approved,
+    });
     const assignment = await this.assignmentRepo.findById(assignmentId);
     if (!assignment) throw new NotFoundException('Assignment not found');
     if (assignment.shiftSkillId !== slotId) {
@@ -750,7 +756,7 @@ export class AssignmentService {
 
       await this.assignmentRepo.updateState(
         assignmentId,
-        AssignmentState.DROP_REQUESTED,
+        AssignmentState.ASSIGNED,
       );
 
       await this.eventRepo.append({
