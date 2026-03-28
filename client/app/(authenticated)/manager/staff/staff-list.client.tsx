@@ -171,7 +171,7 @@ export default function StaffView() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Desired Hours / Week</Label>
+                  <Label>Desired Hours / Week *</Label>
                   <Input
                     type="number"
                     min={0}
@@ -227,6 +227,7 @@ export default function StaffView() {
                     !email ||
                     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
                     !name ||
+                    !desiredHours ||
                     createMutation.isPending
                   }
                 >
